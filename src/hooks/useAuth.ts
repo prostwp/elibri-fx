@@ -101,12 +101,50 @@ export function useAuth() {
     }
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        return { success: false, error: formatAuthError(error) };
+      }
+
+      return { success: true, error: null };
+    } catch (err) {
+      return { success: false, error: 'Unexpected error. Please try again.' };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string): Promise<AuthResult> => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+      if (error) {
+        return { success: false, error: formatAuthError(error) };
+      }
+
+      return { success: true, error: null };
+    } catch (err) {
+      return { success: false, error: 'Unexpected error. Please try again.' };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     signUp,
     signIn,
     signInWithGoogle,
     signOut,
+    requestPasswordReset,
+    updatePassword,
   };
 }
 
@@ -120,6 +158,10 @@ function formatAuthError(error: AuthError): string {
       return 'Please confirm your email first. Check your inbox.';
     case 'Signup requires a valid password':
       return 'Password must be at least 6 characters.';
+    case 'For security purposes, you can only request this once every 60 seconds':
+      return 'Please wait 60 seconds before requesting another reset link.';
+    case 'New password should be different from the old password.':
+      return 'New password must be different from your current password.';
     default:
       return error.message;
   }
