@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
 import { DEMO_PAIRS } from '../../lib/demoData';
@@ -534,6 +534,37 @@ function YOLOView({ analysis, symbol, onRefresh }: { analysis: YOLOAnalysis; sym
   );
 }
 
+// ─── Stock Chart (TradingView Mini Symbol Overview) ──────
+function StockChart({ ticker }: { ticker: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = '';
+
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      symbol: `MOEX:${ticker}`,
+      width: '100%',
+      height: 220,
+      locale: 'ru',
+      dateRange: '3M',
+      colorTheme: 'dark',
+      isTransparent: true,
+      autosize: false,
+      largeChartUrl: '',
+      chartOnly: false,
+      noTimeScale: false,
+    });
+
+    containerRef.current.appendChild(script);
+  }, [ticker]);
+
+  return <div ref={containerRef} className="rounded-lg overflow-hidden" style={{ height: 220 }} />;
+}
+
 // ─── Fundamental View ──────────────────────
 
 import type { GraphResult } from '../../lib/graphEngine';
@@ -593,6 +624,11 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }
           <div className={`text-sm font-black ${verdictColor}`}>{verdict}</div>
           <div className="text-[9px] text-gray-500 mt-1">Graph confidence: {graphResult.confidence}%</div>
         </div>
+      </Section>
+
+      {/* Chart — TradingView Symbol Overview */}
+      <Section title="Chart">
+        <StockChart ticker={fund.ticker} />
       </Section>
 
       {/* Price Levels */}
