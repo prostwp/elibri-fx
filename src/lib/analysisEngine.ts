@@ -200,20 +200,32 @@ export function validateGraph(nodes: Node[], edges: Edge[]): GraphWarning[] {
 
   if (nodes.length === 0) return warnings;
 
-  const hasSource = nodes.some(n => n.type === 'marketPair' || n.type === 'chartSource');
-  const hasOutput = nodes.some(n => n.type === 'dashboard');
-  const hasAnalysis = nodes.some(n =>
-    n.type === 'technicalIndicator' || n.type === 'tradingAnalyst' || n.type === 'guidedTrader'
-  );
+  // Detect mode: fundamental (has stockAnalysis) vs forex
+  const isFundamental = nodes.some(n => n.type === 'stockAnalysis');
 
-  if (!hasSource) {
-    warnings.push({ type: 'warning', message: 'Add a Market Pair or Chart Source node' });
-  }
-  if (!hasOutput) {
-    warnings.push({ type: 'warning', message: 'Add a Dashboard node to see results' });
-  }
-  if (!hasAnalysis) {
-    warnings.push({ type: 'warning', message: 'Add Technical Indicators or an AI Agent' });
+  if (isFundamental) {
+    // Fundamental mode — check for stock-specific nodes
+    const hasOutput = nodes.some(n => n.type === 'portfolioScore' || n.type === 'dashboard');
+    if (!hasOutput) {
+      warnings.push({ type: 'warning', message: 'Add a Portfolio Score node for final verdict' });
+    }
+  } else {
+    // Forex mode
+    const hasSource = nodes.some(n => n.type === 'marketPair' || n.type === 'chartSource');
+    const hasOutput = nodes.some(n => n.type === 'dashboard');
+    const hasAnalysis = nodes.some(n =>
+      n.type === 'technicalIndicator' || n.type === 'tradingAnalyst' || n.type === 'guidedTrader'
+    );
+
+    if (!hasSource) {
+      warnings.push({ type: 'warning', message: 'Add a Market Pair or Chart Source node' });
+    }
+    if (!hasOutput) {
+      warnings.push({ type: 'warning', message: 'Add a Dashboard node to see results' });
+    }
+    if (!hasAnalysis) {
+      warnings.push({ type: 'warning', message: 'Add Technical Indicators or an AI Agent' });
+    }
   }
 
   // Check for disconnected nodes

@@ -12,7 +12,8 @@ interface Template {
 
 const edgeStyle = { stroke: '#6366f1', strokeWidth: 2 };
 
-export const TEMPLATES: Template[] = [
+// Archived forex templates kept for reference
+const _FOREX_TEMPLATES: Template[] = [
   {
     name: 'Safe Start',
     description: 'Beginner-friendly with explanations',
@@ -101,6 +102,9 @@ export const TEMPLATES: Template[] = [
     ],
   },
 
+];
+
+export const TEMPLATES: Template[] = [
   // ─── T-Invest Fundamental ───────────────────────
   {
     name: 'T-Invest Fundamental',
