@@ -4,7 +4,7 @@
  * Фундаментал: захардкожены реальные данные из отчётности 2024
  */
 
-const FINNHUB_KEY = import.meta.env.VITE_FINNHUB_API_KEY ?? '';
+// Finnhub key kept for news/calendar. MOEX ISS used for stock quotes (free, no key).
 
 // ─── Типы ───────────────────────────────────────
 export interface StockQuote {
@@ -89,7 +89,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     revenue: 3890, netIncome: 1508, ebitda: 0, fcf: 850, capex: 180,
     netDebt: 0, netDebtEbitda: 0, debtEquity: 0, currentRatio: 0,
     revenueGrowth: 18.5, ebitdaGrowth: 0, fcfGrowth: 22.0,
-    marketCap: 5720, ev: 5720, fairValue: 340, currentPrice: 295,
+    marketCap: 5720, ev: 5720, fairValue: 340, currentPrice: 317,
     upside: 15.3,
   },
   'GAZP': {
@@ -168,9 +168,9 @@ export const STOCK_TICKERS = Object.keys(STOCKS_FUNDAMENTAL);
 
 export const SECTORS = [...new Set(Object.values(STOCKS_FUNDAMENTAL).map(s => s.sector))];
 
-// ─── Котировки через Finnhub ────────────────────
+// ─── Котировки через MOEX ISS API (бесплатно, без ключа) ────
 let quoteCache: Record<string, { data: StockQuote; timestamp: number }> = {};
-const QUOTE_TTL = 60_000; // 1 minute
+const QUOTE_TTL = 30_000; // 30 seconds
 
 export async function fetchStockQuote(ticker: string): Promise<StockQuote | null> {
   const cached = quoteCache[ticker];
@@ -178,36 +178,70 @@ export async function fetchStockQuote(ticker: string): Promise<StockQuote | null
     return cached.data;
   }
 
-  if (!FINNHUB_KEY) return null;
-
   try {
-    // Finnhub использует .ME суффикс для Мосбиржи
-    const symbol = `${ticker}.ME`;
     const res = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`
+      `https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/${ticker}.json?iss.meta=off&iss.only=marketdata&marketdata.columns=SECID,LAST,CHANGE,HIGH,LOW,OPEN`
     );
     if (!res.ok) return null;
 
     const raw = await res.json();
-    if (!raw.c || raw.c === 0) return null;
+    const row = raw?.marketdata?.data?.[0];
+    if (!row || !row[1]) return null;
 
     const quote: StockQuote = {
       symbol: ticker,
-      price: raw.c,
-      change: raw.d ?? 0,
-      changePercent: raw.dp ?? 0,
-      high: raw.h ?? raw.c,
-      low: raw.l ?? raw.c,
-      open: raw.o ?? raw.c,
-      prevClose: raw.pc ?? raw.c,
+      price: row[1],
+      change: row[2] ?? 0,
+      changePercent: row[1] && row[5] ? ((row[1] - row[5]) / row[5]) * 100 : 0,
+      high: row[3] ?? row[1],
+      low: row[4] ?? row[1],
+      open: row[5] ?? row[1],
+      prevClose: row[1] - (row[2] ?? 0),
       timestamp: Date.now(),
     };
 
     quoteCache[ticker] = { data: quote, timestamp: Date.now() };
     return quote;
   } catch (err) {
-    console.error(`Quote error for ${ticker}:`, err);
+    console.error(`MOEX quote error for ${ticker}:`, err);
     return null;
+  }
+}
+
+// ─── Котировки пачкой ───────────────────────────
+export async function fetchAllQuotes(): Promise<Record<string, StockQuote>> {
+  try {
+    const tickers = STOCK_TICKERS.join(',');
+    const res = await fetch(
+      `https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=marketdata&marketdata.columns=SECID,LAST,CHANGE,HIGH,LOW,OPEN&securities=${tickers}`
+    );
+    if (!res.ok) return {};
+
+    const raw = await res.json();
+    const rows = raw?.marketdata?.data ?? [];
+    const result: Record<string, StockQuote> = {};
+
+    for (const row of rows) {
+      if (!row[0] || !row[1]) continue;
+      const quote: StockQuote = {
+        symbol: row[0],
+        price: row[1],
+        change: row[2] ?? 0,
+        changePercent: row[1] && row[5] ? ((row[1] - row[5]) / row[5]) * 100 : 0,
+        high: row[3] ?? row[1],
+        low: row[4] ?? row[1],
+        open: row[5] ?? row[1],
+        prevClose: row[1] - (row[2] ?? 0),
+        timestamp: Date.now(),
+      };
+      result[row[0]] = quote;
+      quoteCache[row[0]] = { data: quote, timestamp: Date.now() };
+    }
+
+    return result;
+  } catch (err) {
+    console.error('MOEX batch quotes error:', err);
+    return {};
   }
 }
 
