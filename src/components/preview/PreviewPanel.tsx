@@ -595,15 +595,46 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }
         </div>
       </Section>
 
-      {/* TradingView Chart for stock */}
-      <Section title="Chart">
-        <TradingViewChart
-          key={fund.ticker}
-          symbol={fund.ticker}
-          entry={fund.fairValue}
-          stopLoss={fund.currentPrice * 0.9}
-          takeProfit={fund.fairValue}
-        />
+      {/* Price Levels */}
+      <Section title="Ценовые уровни">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-2 bg-white/5 rounded-full relative overflow-hidden">
+              {(() => {
+                const min = Math.min(fund.currentPrice * 0.85, quote?.low ?? fund.currentPrice);
+                const max = Math.max(fund.fairValue * 1.05, quote?.high ?? fund.currentPrice);
+                const range = max - min;
+                const pricePos = ((quote?.price ?? fund.currentPrice) - min) / range * 100;
+                const fairPos = (fund.fairValue - min) / range * 100;
+                return (
+                  <>
+                    <div className="absolute h-full bg-indigo-500/30 rounded-full" style={{ left: `${Math.min(pricePos, fairPos)}%`, width: `${Math.abs(fairPos - pricePos)}%` }} />
+                    <div className="absolute h-full w-1 bg-white rounded-full" style={{ left: `${pricePos}%` }} title="Current" />
+                    <div className="absolute h-full w-1 bg-indigo-400 rounded-full" style={{ left: `${fairPos}%` }} title="Fair Value" />
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+          <div className="flex justify-between text-[9px]">
+            <span className="text-gray-500">Цена: <strong className="text-white">{quote?.price.toFixed(2) ?? fund.currentPrice} ₽</strong></span>
+            <span className="text-gray-500">Fair: <strong className="text-indigo-400">{fund.fairValue} ₽</strong></span>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 px-2 py-1.5 text-center">
+              <div className="text-[8px] text-gray-500">Target</div>
+              <div className="text-[11px] font-bold text-indigo-400">{fund.fairValue} ₽</div>
+            </div>
+            <div className="flex-1 rounded-lg bg-red-500/10 border border-red-500/20 px-2 py-1.5 text-center">
+              <div className="text-[8px] text-gray-500">Stop Loss (-10%)</div>
+              <div className="text-[11px] font-bold text-red-400">{((quote?.price ?? fund.currentPrice) * 0.9).toFixed(0)} ₽</div>
+            </div>
+            <div className="flex-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2 py-1.5 text-center">
+              <div className="text-[8px] text-gray-500">Upside</div>
+              <div className="text-[11px] font-bold text-emerald-400">+{fund.upside}%</div>
+            </div>
+          </div>
+        </div>
       </Section>
 
       {/* Key Multipliers */}
