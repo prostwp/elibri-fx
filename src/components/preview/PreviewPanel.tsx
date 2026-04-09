@@ -9,6 +9,7 @@ import { analyzeStrategy, validateGraph } from '../../lib/analysisEngine';
 import { GaugeWidget } from './GaugeWidget';
 import { SignalTable } from './SignalTable';
 import { TradingViewChart } from './TradingViewChart';
+import { StockChart as StockChartComponent } from './StockChart';
 import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison, fetchStockQuote, type StockQuote } from '../../lib/stockData';
 import type { SegmentMode, BeginnerAnalysis, YOLOAnalysis, AIAnalysis } from '../../types/nodes';
 
@@ -595,17 +596,9 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }
         </div>
       </Section>
 
-      {/* Chart link */}
+      {/* Real MOEX Chart */}
       <Section title="Chart">
-        <a
-          href={`https://www.tradingview.com/chart/?symbol=MOEX:${fund.ticker}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 py-3 rounded-lg bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] hover:border-indigo-500/30 transition"
-        >
-          <span className="text-lg">📈</span>
-          <span className="text-[11px] text-indigo-400 font-semibold">Open {fund.ticker} chart on TradingView</span>
-        </a>
+        <StockChartComponent ticker={fund.ticker} fairValue={fund.fairValue} />
       </Section>
 
       {/* Price Levels */}
