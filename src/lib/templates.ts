@@ -13,6 +13,7 @@ interface Template {
 const edgeStyle = { stroke: '#6366f1', strokeWidth: 2 };
 
 // Archived forex templates kept for reference
+// @ts-ignore unused archive
 const _FOREX_TEMPLATES: Template[] = [
   {
     name: 'Safe Start',
