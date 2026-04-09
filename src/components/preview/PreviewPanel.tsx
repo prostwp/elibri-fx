@@ -626,9 +626,17 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }
         </div>
       </Section>
 
-      {/* Chart — TradingView Symbol Overview */}
+      {/* Chart link */}
       <Section title="Chart">
-        <StockChart ticker={fund.ticker} />
+        <a
+          href={`https://www.tradingview.com/chart/?symbol=MOEX:${fund.ticker}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 py-3 rounded-lg bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] hover:border-indigo-500/30 transition"
+        >
+          <span className="text-lg">📈</span>
+          <span className="text-[11px] text-indigo-400 font-semibold">Open {fund.ticker} chart on TradingView</span>
+        </a>
       </Section>
 
       {/* Price Levels */}
