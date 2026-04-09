@@ -17,6 +17,7 @@ function toTVSymbol(pair: string): string {
     XAUUSD: 'TVC:GOLD',
     USDCHF: 'FX:USDCHF',
   };
+  if (pair.includes(':')) return pair;
   return map[pair] ?? `FX:${pair}`;
 }
 

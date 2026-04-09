@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
 import { DEMO_PAIRS } from '../../lib/demoData';
@@ -89,7 +89,7 @@ export function PreviewPanel() {
 
   // Fetch live quote for stock
   const [stockQuote, setStockQuote] = useState<StockQuote | null>(null);
-  useMemo(() => {
+  useEffect(() => {
     if (isFundamentalMode) {
       fetchStockQuote(stockTicker).then(q => { if (q) setStockQuote(q); });
     }
