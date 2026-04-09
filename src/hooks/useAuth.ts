@@ -68,7 +68,7 @@ export function useAuth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: window.location.href.split('#')[0],
         },
       });
 
@@ -105,7 +105,7 @@ export function useAuth() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.href.split('#')[0]}#/reset-password`,
       });
 
       if (error) {
