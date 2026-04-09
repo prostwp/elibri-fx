@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
 import { DEMO_PAIRS } from '../../lib/demoData';
@@ -532,37 +532,6 @@ function YOLOView({ analysis, symbol, onRefresh }: { analysis: YOLOAnalysis; sym
       </div>
     </>
   );
-}
-
-// ─── Stock Chart (TradingView Mini Symbol Overview) ──────
-function StockChart({ ticker }: { ticker: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    containerRef.current.innerHTML = '';
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      symbol: `MOEX:${ticker}`,
-      width: '100%',
-      height: 220,
-      locale: 'ru',
-      dateRange: '3M',
-      colorTheme: 'dark',
-      isTransparent: true,
-      autosize: false,
-      largeChartUrl: '',
-      chartOnly: false,
-      noTimeScale: false,
-    });
-
-    containerRef.current.appendChild(script);
-  }, [ticker]);
-
-  return <div ref={containerRef} className="rounded-lg overflow-hidden" style={{ height: 220 }} />;
 }
 
 // ─── Fundamental View ──────────────────────
