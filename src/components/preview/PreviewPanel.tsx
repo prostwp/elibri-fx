@@ -598,8 +598,8 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }
       {/* TradingView Chart for stock */}
       <Section title="Chart">
         <TradingViewChart
-          key={`MOEX:${fund.ticker}`}
-          symbol={`MOEX:${fund.ticker}`}
+          key={`MCX:${fund.ticker}`}
+          symbol={`MCX:${fund.ticker}`}
           entry={fund.fairValue}
           stopLoss={fund.currentPrice * 0.9}
           takeProfit={fund.fairValue}
