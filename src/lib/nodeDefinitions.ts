@@ -104,6 +104,18 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
     defaultData: { riskTolerance: 'moderate', style: 'swing' },
   },
 
+  {
+    type: 'stockAnalysis',
+    label: 'Stock Analyzer',
+    category: 'analysis',
+    icon: '🏛️',
+    description: 'P/E, FCF, EBITDA, мультипликаторы',
+    premium: false,
+    inputs: ['data'],
+    outputs: ['analysis'],
+    defaultData: { ticker: 'SBER' },
+  },
+
   // Logic
   {
     type: 'condition',

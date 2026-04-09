@@ -11,6 +11,7 @@ export { RiskManagerNode } from './RiskManagerNode';
 export { GuidedTraderNode } from './GuidedTraderNode';
 export { RiskCapNode } from './RiskCapNode';
 export { DashboardNode } from './DashboardNode';
+export { StockAnalysisNode } from './StockAnalysisNode';
 
 import type { ComponentType } from 'react';
 import type { NodeProps } from '@xyflow/react';
@@ -27,6 +28,7 @@ import { RiskManagerNode } from './RiskManagerNode';
 import { GuidedTraderNode } from './GuidedTraderNode';
 import { RiskCapNode } from './RiskCapNode';
 import { DashboardNode } from './DashboardNode';
+import { StockAnalysisNode } from './StockAnalysisNode';
 
 export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
   marketPair: MarketPairNode,
@@ -45,4 +47,5 @@ export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
   guidedTrader: GuidedTraderNode as ComponentType<NodeProps>,
   riskCap: RiskCapNode as ComponentType<NodeProps>,
   dashboard: DashboardNode as ComponentType<NodeProps>,
+  stockAnalysis: StockAnalysisNode as ComponentType<NodeProps>,
 };
