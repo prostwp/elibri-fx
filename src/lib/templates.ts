@@ -100,4 +100,37 @@ export const TEMPLATES: Template[] = [
       { id: 'e9', source: 'rc1', target: 'db1', animated: true, style: edgeStyle },
     ],
   },
+
+  // ─── T-Invest Fundamental ───────────────────────
+  {
+    name: 'T-Invest Fundamental',
+    description: 'Полный фундаментальный анализ акции для Т-Инвестиций',
+    icon: '🏛️',
+    segment: 'pro' as SegmentMode,
+    nodes: [
+      // Row 1: Stock Analyzer (source)
+      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 120 }, data: { ticker: 'SBER', weight: 0.8 } },
+      // Row 2: Analysis nodes
+      { id: 'rs1', type: 'reportSelector', position: { x: 320, y: 0 }, data: { weight: 0.3 } },
+      { id: 'cf1', type: 'cashFlow', position: { x: 320, y: 150 }, data: { weight: 0.7 } },
+      { id: 'da1', type: 'debtAnalysis', position: { x: 320, y: 340 }, data: { weight: 0.6 } },
+      // Row 3: More analysis
+      { id: 'pf1', type: 'profitability', position: { x: 620, y: 0 }, data: { weight: 0.7 } },
+      { id: 'sc1', type: 'sectorCompare', position: { x: 620, y: 200 }, data: { weight: 0.5 } },
+      // Row 4: Output
+      { id: 'ps1', type: 'portfolioScore', position: { x: 920, y: 140 }, data: { weight: 1.0 } },
+    ],
+    edges: [
+      { id: 'fe1', source: 'sa1', target: 'rs1', animated: true, style: edgeStyle },
+      { id: 'fe2', source: 'sa1', target: 'cf1', animated: true, style: edgeStyle },
+      { id: 'fe3', source: 'sa1', target: 'da1', animated: true, style: edgeStyle },
+      { id: 'fe4', source: 'rs1', target: 'pf1', animated: true, style: edgeStyle },
+      { id: 'fe5', source: 'cf1', target: 'pf1', animated: true, style: edgeStyle },
+      { id: 'fe6', source: 'cf1', target: 'sc1', animated: true, style: edgeStyle },
+      { id: 'fe7', source: 'da1', target: 'sc1', animated: true, style: edgeStyle },
+      { id: 'fe8', source: 'pf1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'fe9', source: 'sc1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'fe10', source: 'da1', target: 'ps1', animated: true, style: edgeStyle },
+    ],
+  },
 ];
