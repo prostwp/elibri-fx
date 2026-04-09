@@ -108,17 +108,17 @@ export const TEMPLATES: Template[] = [
     icon: '🏛️',
     segment: 'pro' as SegmentMode,
     nodes: [
-      // Row 1: Stock Analyzer (source)
-      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 120 }, data: { ticker: 'SBER', weight: 0.8 } },
-      // Row 2: Analysis nodes
-      { id: 'rs1', type: 'reportSelector', position: { x: 320, y: 0 }, data: { weight: 0.3 } },
-      { id: 'cf1', type: 'cashFlow', position: { x: 320, y: 150 }, data: { weight: 0.7 } },
-      { id: 'da1', type: 'debtAnalysis', position: { x: 320, y: 340 }, data: { weight: 0.6 } },
-      // Row 3: More analysis
-      { id: 'pf1', type: 'profitability', position: { x: 620, y: 0 }, data: { weight: 0.7 } },
-      { id: 'sc1', type: 'sectorCompare', position: { x: 620, y: 200 }, data: { weight: 0.5 } },
-      // Row 4: Output
-      { id: 'ps1', type: 'portfolioScore', position: { x: 920, y: 140 }, data: { weight: 1.0 } },
+      // Col 1: Stock Analyzer (source)
+      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'SBER', weight: 0.8 } },
+      // Col 2: First analysis layer
+      { id: 'rs1', type: 'reportSelector', position: { x: 380, y: 0 }, data: { weight: 0.3 } },
+      { id: 'cf1', type: 'cashFlow', position: { x: 380, y: 280 }, data: { weight: 0.7 } },
+      { id: 'da1', type: 'debtAnalysis', position: { x: 380, y: 560 }, data: { weight: 0.6 } },
+      // Col 3: Second analysis layer
+      { id: 'pf1', type: 'profitability', position: { x: 760, y: 0 }, data: { weight: 0.7 } },
+      { id: 'sc1', type: 'sectorCompare', position: { x: 760, y: 320 }, data: { weight: 0.5 } },
+      // Col 4: Output
+      { id: 'ps1', type: 'portfolioScore', position: { x: 1120, y: 200 }, data: { weight: 1.0 } },
     ],
     edges: [
       { id: 'fe1', source: 'sa1', target: 'rs1', animated: true, style: edgeStyle },
