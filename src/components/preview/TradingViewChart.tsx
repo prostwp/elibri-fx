@@ -16,6 +16,15 @@ function toTVSymbol(pair: string): string {
     GBPJPY: 'FX:GBPJPY',
     XAUUSD: 'TVC:GOLD',
     USDCHF: 'FX:USDCHF',
+    // Russian stocks — MOEX via TradingView
+    SBER: 'MOEX:SBER',
+    GAZP: 'MOEX:GAZP',
+    LKOH: 'MOEX:LKOH',
+    YNDX: 'MOEX:YNDX',
+    GMKN: 'MOEX:GMKN',
+    NLMK: 'MOEX:NLMK',
+    ROSN: 'MOEX:ROSN',
+    MTSS: 'MOEX:MTSS',
   };
   if (pair.includes(':')) return pair;
   return map[pair] ?? `FX:${pair}`;
