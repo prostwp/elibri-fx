@@ -9,6 +9,7 @@ import { analyzeStrategy, validateGraph } from '../../lib/analysisEngine';
 import { GaugeWidget } from './GaugeWidget';
 import { SignalTable } from './SignalTable';
 import { TradingViewChart } from './TradingViewChart';
+import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison, fetchStockQuote, type StockQuote } from '../../lib/stockData';
 import type { SegmentMode, BeginnerAnalysis, YOLOAnalysis, AIAnalysis } from '../../types/nodes';
 
 export function PreviewPanel() {
@@ -75,6 +76,24 @@ export function PreviewPanel() {
   }, [nodes, edges, pairData.displayName, indicatorResults, lastPrice, segmentMode, pairData.candles, selectedIndicators, refreshKey]);
 
   const hasNodes = nodes.length > 0;
+
+  // Detect fundamental mode (has stockAnalysis node)
+  const isFundamentalMode = nodes.some(n => n.type === 'stockAnalysis');
+  const stockTicker = useMemo(() => {
+    const sn = nodes.find(n => n.type === 'stockAnalysis');
+    return (sn?.data?.ticker as string) ?? 'SBER';
+  }, [nodes]);
+  const fundData = isFundamentalMode ? STOCKS_FUNDAMENTAL[stockTicker] : null;
+  const stressData = fundData ? getStressScore(fundData) : null;
+  const sectorData = fundData ? getSectorComparison(fundData.sector) : null;
+
+  // Fetch live quote for stock
+  const [stockQuote, setStockQuote] = useState<StockQuote | null>(null);
+  useMemo(() => {
+    if (isFundamentalMode) {
+      fetchStockQuote(stockTicker).then(q => { if (q) setStockQuote(q); });
+    }
+  }, [stockTicker, isFundamentalMode, refreshKey]);
 
   return (
     <div className="w-[340px] min-w-[340px] bg-[#0d0d14] border-l border-white/5 flex flex-col h-full overflow-hidden">
@@ -200,9 +219,22 @@ export function PreviewPanel() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-          {segmentMode === 'beginner' && <BeginnerView analysis={analysis as BeginnerAnalysis} symbol={selectedPair} onRefresh={onRefresh} />}
-          {segmentMode === 'pro' && <ProView analysis={analysis as AIAnalysis} symbol={selectedPair} onRefresh={onRefresh} />}
-          {segmentMode === 'yolo' && <YOLOView analysis={analysis as YOLOAnalysis} symbol={selectedPair} onRefresh={onRefresh} />}
+          {isFundamentalMode && fundData ? (
+            <FundamentalView
+              fund={fundData}
+              graphResult={graphResult}
+              quote={stockQuote}
+              stress={stressData}
+              sector={sectorData}
+              onRefresh={onRefresh}
+            />
+          ) : (
+            <>
+              {segmentMode === 'beginner' && <BeginnerView analysis={analysis as BeginnerAnalysis} symbol={selectedPair} onRefresh={onRefresh} />}
+              {segmentMode === 'pro' && <ProView analysis={analysis as AIAnalysis} symbol={selectedPair} onRefresh={onRefresh} />}
+              {segmentMode === 'yolo' && <YOLOView analysis={analysis as YOLOAnalysis} symbol={selectedPair} onRefresh={onRefresh} />}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -498,6 +530,241 @@ function YOLOView({ analysis, symbol, onRefresh }: { analysis: YOLOAnalysis; sym
       <div className="text-center text-[9px] text-gray-600">
         {mt5Status === 'connected' ? 'MT5 Connected — trades will execute on your account' : 'Connect MT5 to execute trades'}
       </div>
+    </>
+  );
+}
+
+// ─── Fundamental View ──────────────────────
+
+import type { GraphResult } from '../../lib/graphEngine';
+import type { FundamentalData, SectorComparison } from '../../lib/stockData';
+
+function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }: {
+  fund: FundamentalData;
+  graphResult: GraphResult;
+  quote: StockQuote | null;
+  stress: ReturnType<typeof getStressScore> | null;
+  sector: SectorComparison | null;
+  onRefresh: () => void;
+}) {
+  const score = graphResult.finalScore;
+  const verdict = score > 0.5 ? 'STRONG BUY' : score > 0.2 ? 'BUY' : score > -0.2 ? 'HOLD' : 'AVOID';
+  const verdictColor = verdict === 'STRONG BUY' || verdict === 'BUY' ? 'text-emerald-400' : verdict === 'HOLD' ? 'text-amber-400' : 'text-red-400';
+
+  // Portfolio score (simplified from PortfolioScoreNode)
+  let portfolioScore = 0;
+  if (fund.pe < 6) portfolioScore += 25; else if (fund.pe < 12) portfolioScore += 15; else portfolioScore += 5;
+  if (fund.roe > 20) portfolioScore += 25; else if (fund.roe > 10) portfolioScore += 15; else portfolioScore += 5;
+  if (fund.fcf > 0 && fund.fcfGrowth > 0) portfolioScore += 25; else if (fund.fcf > 0) portfolioScore += 15;
+  if (fund.netDebtEbitda < 1) portfolioScore += 25; else if (fund.netDebtEbitda < 2) portfolioScore += 15; else portfolioScore += 5;
+
+  return (
+    <>
+      {/* Company Header */}
+      <Section title={`${fund.name} (${fund.ticker})`}>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            {quote ? (
+              <span className={`text-lg font-black ${(quote.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {quote.price.toFixed(2)} ₽
+              </span>
+            ) : (
+              <span className="text-lg font-black text-white">{fund.currentPrice} ₽</span>
+            )}
+            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+              fund.reportType === 'МСФО' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
+            }`}>{fund.reportType}</span>
+          </div>
+          {quote && (
+            <div className={`text-[10px] ${quote.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {quote.changePercent >= 0 ? '+' : ''}{quote.change.toFixed(2)} ({quote.changePercent.toFixed(2)}%) за день
+            </div>
+          )}
+        </div>
+      </Section>
+
+      {/* Verdict */}
+      <Section title="Portfolio Score">
+        <div className="text-center py-3 rounded-xl bg-white/[0.03] border border-white/5">
+          <div className={`text-4xl font-black ${portfolioScore >= 70 ? 'text-emerald-400' : portfolioScore >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+            {portfolioScore}
+          </div>
+          <div className="text-[9px] text-gray-500 mb-2">из 100</div>
+          <div className={`text-sm font-black ${verdictColor}`}>{verdict}</div>
+          <div className="text-[9px] text-gray-500 mt-1">Graph confidence: {graphResult.confidence}%</div>
+        </div>
+      </Section>
+
+      {/* TradingView Chart for stock */}
+      <Section title="Chart">
+        <TradingViewChart
+          key={`MOEX:${fund.ticker}`}
+          symbol={`MOEX:${fund.ticker}`}
+          entry={fund.fairValue}
+          stopLoss={fund.currentPrice * 0.9}
+          takeProfit={fund.fairValue}
+        />
+      </Section>
+
+      {/* Key Multipliers */}
+      <Section title="Мультипликаторы">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'P/E', value: fund.pe.toFixed(1), good: fund.pe < 10 },
+            { label: 'P/B', value: fund.pb.toFixed(1), good: fund.pb < 1.5 },
+            { label: 'EV/EBITDA', value: fund.evEbitda.toFixed(1), good: fund.evEbitda < 6 },
+            { label: 'P/S', value: fund.ps.toFixed(1), good: fund.ps < 1 },
+            { label: 'Div Yield', value: `${fund.divYield}%`, good: fund.divYield > 8 },
+            { label: 'FCF Yield', value: `${(fund.marketCap > 0 ? (fund.fcf / fund.marketCap * 100) : 0).toFixed(1)}%`, good: fund.fcf / fund.marketCap > 0.1 },
+          ].map(m => (
+            <div key={m.label} className={`rounded-lg px-2 py-1.5 text-center border ${m.good ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/[0.03] border-white/5'}`}>
+              <div className="text-[8px] text-gray-500">{m.label}</div>
+              <div className={`text-[11px] font-bold ${m.good ? 'text-emerald-400' : 'text-white'}`}>{m.value}</div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Cash Flows */}
+      <Section title="Денежные потоки">
+        <div className="space-y-1.5">
+          {[
+            { label: 'Выручка', value: `${fund.revenue} млрд`, growth: fund.revenueGrowth },
+            { label: 'EBITDA', value: fund.ebitda > 0 ? `${fund.ebitda} млрд` : 'N/A', growth: fund.ebitdaGrowth },
+            { label: 'Чист. прибыль', value: `${fund.netIncome} млрд`, growth: 0 },
+            { label: 'FCF', value: `${fund.fcf} млрд`, growth: fund.fcfGrowth },
+            { label: 'CAPEX', value: `${fund.capex} млрд`, growth: 0 },
+          ].map(r => (
+            <div key={r.label} className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-400">{r.label}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-white font-semibold">{r.value}</span>
+                {r.growth !== 0 && (
+                  <span className={`text-[9px] ${r.growth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {r.growth > 0 ? '↑' : '↓'}{Math.abs(r.growth)}%
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Profitability */}
+      <Section title="Рентабельность">
+        <div className="space-y-1.5">
+          {[
+            { label: 'ROE', value: fund.roe, max: 40 },
+            { label: 'ROA', value: fund.roa, max: 20 },
+            { label: 'Net Margin', value: fund.netMargin, max: 40 },
+            { label: 'Oper Margin', value: fund.operMargin, max: 50 },
+          ].map(m => (
+            <div key={m.label}>
+              <div className="flex justify-between text-[10px] mb-0.5">
+                <span className="text-gray-400">{m.label}</span>
+                <span className={`font-bold ${m.value > m.max * 0.5 ? 'text-emerald-400' : m.value > 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {m.value.toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full h-1 bg-white/5 rounded-full">
+                <div className={`h-full rounded-full ${m.value > m.max * 0.5 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                  style={{ width: `${Math.min(100, (m.value / m.max) * 100)}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Debt & Stress Test */}
+      <Section title="Долговая нагрузка">
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-[10px]">
+            <span className="text-gray-400">Net Debt / EBITDA</span>
+            <span className={`font-bold ${fund.netDebtEbitda < 1 ? 'text-emerald-400' : fund.netDebtEbitda < 2 ? 'text-amber-400' : 'text-red-400'}`}>
+              {fund.netDebtEbitda.toFixed(2)}x
+            </span>
+          </div>
+          <div className="flex justify-between text-[10px]">
+            <span className="text-gray-400">Debt / Equity</span>
+            <span className="text-white">{fund.debtEquity.toFixed(2)}</span>
+          </div>
+          {stress && (
+            <div className={`mt-2 px-3 py-2 rounded-lg border ${
+              stress.level === 'strong' ? 'bg-emerald-500/10 border-emerald-500/20' :
+              stress.level === 'moderate' ? 'bg-amber-500/10 border-amber-500/20' :
+              'bg-red-500/10 border-red-500/20'
+            }`}>
+              <div className="flex justify-between text-[10px] mb-1">
+                <span className="text-gray-400">Стресс-тест</span>
+                <span className={`font-bold ${stress.level === 'strong' ? 'text-emerald-400' : stress.level === 'moderate' ? 'text-amber-400' : 'text-red-400'}`}>
+                  {stress.score}/100
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-white/5 rounded-full">
+                <div className={`h-full rounded-full ${stress.level === 'strong' ? 'bg-emerald-500' : stress.level === 'moderate' ? 'bg-amber-500' : 'bg-red-500'}`}
+                  style={{ width: `${stress.score}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </Section>
+
+      {/* Sector Comparison */}
+      {sector && sector.companies.length > 1 && (
+        <Section title={`Сектор: ${fund.sector}`}>
+          <div className="space-y-1">
+            {sector.companies.map((c, i) => (
+              <div key={c.ticker} className={`flex items-center gap-2 px-2 py-1 rounded text-[10px] ${
+                c.ticker === fund.ticker ? 'bg-indigo-500/15 border border-indigo-500/30' : 'bg-white/[0.03]'
+              }`}>
+                <span className={`font-bold w-3 ${i === 0 ? 'text-emerald-400' : 'text-gray-500'}`}>{i + 1}</span>
+                <span className="text-white font-semibold flex-1">{c.ticker}</span>
+                <span className="text-gray-500">P/E {c.pe.toFixed(1)}</span>
+                <span className={`font-bold px-1 rounded ${c.score >= 70 ? 'text-emerald-400' : c.score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {c.score}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Fair Value */}
+      <Section title="Оценка">
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-[10px]">
+            <span className="text-gray-400">Текущая цена</span>
+            <span className="text-white font-bold">{quote?.price.toFixed(2) ?? fund.currentPrice} ₽</span>
+          </div>
+          <div className="flex justify-between text-[10px]">
+            <span className="text-gray-400">Fair Value</span>
+            <span className="text-indigo-400 font-bold">{fund.fairValue} ₽</span>
+          </div>
+          <div className="flex justify-between text-[10px]">
+            <span className="text-gray-400">Потенциал</span>
+            <span className={`font-bold ${fund.upside > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {fund.upside > 0 ? '+' : ''}{fund.upside.toFixed(1)}%
+            </span>
+          </div>
+          <div className="flex justify-between text-[10px]">
+            <span className="text-gray-400">Market Cap</span>
+            <span className="text-white">{fund.marketCap} млрд ₽</span>
+          </div>
+        </div>
+      </Section>
+
+      {/* Graph Signals */}
+      <Section title="Signals">
+        <SignalTable signals={graphResult.signals.map(s => ({
+          name: s.label || s.nodeType,
+          direction: s.signal > 0.1 ? 'long' as const : s.signal < -0.1 ? 'short' as const : 'neutral' as const,
+          strength: Math.min(95, Math.round(50 + Math.abs(s.signal) * 45)),
+        }))} />
+      </Section>
+
+      <button onClick={onRefresh} className="w-full py-2 text-[10px] bg-white/[0.03] rounded-lg text-gray-500 hover:text-white hover:bg-white/[0.06] transition">
+        Refresh Analysis
+      </button>
     </>
   );
 }

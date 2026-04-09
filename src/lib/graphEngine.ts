@@ -10,6 +10,7 @@ import {
   calcEMAIndicator, calcSMA,
 } from './indicators';
 import { detectPatterns } from './chartPatterns';
+import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison } from './stockData';
 
 // Сигнал ноды: числовое значение -1 (sell) .. 0 (neutral) .. +1 (buy)
 export interface NodeSignal {
@@ -283,6 +284,117 @@ export function evaluateGraph(
             ? (incoming.reduce((s, i) => s + i.signal * i.weight, 0) / totalW) * damp
             : 0;
           signal = Math.max(-1, Math.min(1, signal));
+        }
+        break;
+      }
+
+      // ─── Fundamental nodes ──────────────────────────
+
+      // Stock Analyzer — valuation signal from P/E + upside
+      case 'stockAnalysis': {
+        const ticker = (node.data.ticker as string) ?? 'SBER';
+        const fund = STOCKS_FUNDAMENTAL[ticker];
+        if (fund) {
+          // Low P/E + high upside = buy, high P/E + low upside = neutral/sell
+          const peSignal = fund.pe < 6 ? 0.8 : fund.pe < 12 ? 0.3 : fund.pe < 20 ? 0 : -0.3;
+          const upsideSignal = fund.upside > 15 ? 0.6 : fund.upside > 5 ? 0.3 : 0;
+          signal = Math.max(-1, Math.min(1, (peSignal + upsideSignal) / 2));
+          indicators = [{
+            name: `${ticker} Valuation`,
+            value: fund.pe,
+            signal: signal > 0.2 ? 'buy' : signal < -0.2 ? 'sell' : 'neutral',
+            description: `P/E ${fund.pe}, upside ${fund.upside}%`,
+          }];
+        }
+        break;
+      }
+
+      // Cash Flow — FCF positive + growing = buy
+      case 'cashFlow': {
+        const ticker2 = nodes.find(n => n.type === 'stockAnalysis')?.data?.ticker as string ?? 'SBER';
+        const fund2 = STOCKS_FUNDAMENTAL[ticker2];
+        if (fund2) {
+          const fcfSignal = fund2.fcf > 0 ? 0.4 : -0.5;
+          const growthSignal = fund2.fcfGrowth > 10 ? 0.5 : fund2.fcfGrowth > 0 ? 0.2 : -0.3;
+          signal = Math.max(-1, Math.min(1, (fcfSignal + growthSignal) / 2));
+          indicators = [{
+            name: 'FCF Analysis',
+            value: fund2.fcf,
+            signal: signal > 0.1 ? 'buy' : signal < -0.1 ? 'sell' : 'neutral',
+            description: `FCF ${fund2.fcf}B, growth ${fund2.fcfGrowth}%`,
+          }];
+        }
+        break;
+      }
+
+      // Debt Analysis — low debt = buy, high debt = sell
+      case 'debtAnalysis': {
+        const ticker3 = nodes.find(n => n.type === 'stockAnalysis')?.data?.ticker as string ?? 'SBER';
+        const fund3 = STOCKS_FUNDAMENTAL[ticker3];
+        if (fund3) {
+          const stress = getStressScore(fund3);
+          signal = (stress.score - 50) / 50; // 0-100 → -1..+1
+          indicators = [{
+            name: 'Debt Stress',
+            value: stress.score,
+            signal: stress.level === 'strong' ? 'buy' : stress.level === 'weak' ? 'sell' : 'neutral',
+            description: `Score ${stress.score}/100, ${stress.level}`,
+          }];
+        }
+        break;
+      }
+
+      // Report Selector — informational, slight signal from report type
+      case 'reportSelector': {
+        signal = incoming.length > 0
+          ? incoming.reduce((s, i) => s + i.signal * i.weight, 0) / Math.max(1, incoming.reduce((s, i) => s + i.weight, 0))
+          : 0;
+        break;
+      }
+
+      // Profitability — high ROE + high margins = buy
+      case 'profitability': {
+        const ticker4 = nodes.find(n => n.type === 'stockAnalysis')?.data?.ticker as string ?? 'SBER';
+        const fund4 = STOCKS_FUNDAMENTAL[ticker4];
+        if (fund4) {
+          const roeSignal = fund4.roe > 20 ? 0.7 : fund4.roe > 10 ? 0.3 : -0.2;
+          const marginSignal = fund4.netMargin > 15 ? 0.5 : fund4.netMargin > 5 ? 0.2 : -0.2;
+          signal = Math.max(-1, Math.min(1, (roeSignal + marginSignal) / 2));
+          indicators = [{
+            name: 'Profitability',
+            value: fund4.roe,
+            signal: signal > 0.2 ? 'buy' : signal < -0.2 ? 'sell' : 'neutral',
+            description: `ROE ${fund4.roe}%, Margin ${fund4.netMargin}%`,
+          }];
+        }
+        break;
+      }
+
+      // Sector Compare — is this the best in sector?
+      case 'sectorCompare': {
+        const ticker5 = nodes.find(n => n.type === 'stockAnalysis')?.data?.ticker as string ?? 'SBER';
+        const fund5 = STOCKS_FUNDAMENTAL[ticker5];
+        if (fund5) {
+          const comp = getSectorComparison(fund5.sector);
+          const rank = comp.companies.findIndex(c => c.ticker === ticker5);
+          signal = rank === 0 ? 0.8 : rank === 1 ? 0.4 : rank >= 0 ? 0 : -0.3;
+          indicators = [{
+            name: 'Sector Rank',
+            value: rank + 1,
+            signal: rank === 0 ? 'buy' : rank <= 1 ? 'neutral' : 'sell',
+            description: `#${rank + 1} in ${fund5.sector}`,
+          }];
+        }
+        break;
+      }
+
+      // Portfolio Score — final aggregation
+      case 'portfolioScore': {
+        if (incoming.length > 0) {
+          const totalW = incoming.reduce((s, i) => s + i.weight, 0);
+          signal = totalW > 0
+            ? incoming.reduce((s, i) => s + i.signal * i.weight, 0) / totalW
+            : 0;
         }
         break;
       }
