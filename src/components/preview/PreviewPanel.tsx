@@ -102,9 +102,13 @@ export function PreviewPanel() {
       <div className="px-4 py-3 border-b border-white/5">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">AI-agent</div>
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              {isFundamentalMode ? 'Fundamental Analysis' : 'AI-agent'}
+            </div>
             <div className="text-sm font-bold text-white">
-              {segmentMode === 'beginner' ? 'Guided Trader' : segmentMode === 'yolo' ? 'YOLO Trader' : 'Trading Analyst'}
+              {isFundamentalMode
+                ? 'T-Invest Analyzer'
+                : segmentMode === 'beginner' ? 'Guided Trader' : segmentMode === 'yolo' ? 'YOLO Trader' : 'Trading Analyst'}
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -121,7 +125,8 @@ export function PreviewPanel() {
           </div>
         </div>
 
-        {/* Segment Mode Switcher */}
+        {/* Segment Mode Switcher — hidden in fundamental mode */}
+        {!isFundamentalMode && (
         <div className="flex gap-1 bg-white/[0.03] rounded-lg p-0.5">
           {(['beginner', 'pro', 'yolo'] as SegmentMode[]).map(mode => (
             <button
@@ -139,6 +144,7 @@ export function PreviewPanel() {
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {/* MT5 Account Strip */}
