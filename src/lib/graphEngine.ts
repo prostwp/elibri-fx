@@ -565,13 +565,20 @@ export function evaluateGraph(
     }
   }
 
-  // Final weighted aggregation across all signal-producing nodes
-  const totalWeight = allSignals.reduce((s, n) => s + n.weight, 0);
-  const finalScore = totalWeight > 0
-    ? allSignals.reduce((s, n) => s + n.signal * n.weight, 0) / totalWeight
+  // Final aggregation: each signal is scaled by its weight
+  // Weight 0% = signal ignored, Weight 100% = full signal
+  // Average of (signal * weight) across all nodes, NOT normalized by totalWeight
+  const activeSignals = allSignals.filter(n => n.weight > 0.05);
+  const finalScore = activeSignals.length > 0
+    ? activeSignals.reduce((s, n) => s + n.signal * n.weight, 0) / activeSignals.length
     : 0;
+  const totalWeight = allSignals.reduce((s, n) => s + n.weight, 0);
 
-  const confidence = Math.min(95, Math.round(Math.abs(finalScore) * 80 + 15));
+  const confidence = Math.min(95, Math.round(
+    Math.abs(finalScore) * 60 +
+    (activeSignals.length / Math.max(1, allSignals.length)) * 25 +
+    10
+  ));
 
   return {
     signals: allSignals,
