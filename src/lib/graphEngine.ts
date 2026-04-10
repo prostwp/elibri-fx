@@ -388,6 +388,47 @@ export function evaluateGraph(
         break;
       }
 
+      // Dividend Capture — high yield + growing + long streak = buy
+      case 'dividendCapture': {
+        const ticker6 = nodes.find(n => n.type === 'stockAnalysis')?.data?.ticker as string ?? 'SBER';
+        const fund6 = STOCKS_FUNDAMENTAL[ticker6];
+        if (fund6) {
+          const yieldSignal = fund6.divYield > 10 ? 0.8 : fund6.divYield > 6 ? 0.4 : fund6.divYield > 0 ? 0.1 : -0.5;
+          signal = yieldSignal;
+          indicators = [{
+            name: 'Dividend',
+            value: fund6.divYield,
+            signal: fund6.divYield > 8 ? 'buy' : fund6.divYield > 4 ? 'neutral' : 'sell',
+            description: `Yield ${fund6.divYield}%`,
+          }];
+        }
+        break;
+      }
+
+      // Event Repricing — positive events = buy, negative = sell
+      case 'eventRepricing': {
+        if (incoming.length > 0) {
+          const totalW = incoming.reduce((s, i) => s + i.weight, 0);
+          signal = totalW > 0
+            ? incoming.reduce((s, i) => s + i.signal * i.weight, 0) / totalW
+            : 0;
+        }
+        // Boost/dampen based on event sentiment (hardcoded per ticker)
+        const ticker7 = nodes.find(n => n.type === 'stockAnalysis')?.data?.ticker as string ?? 'SBER';
+        const eventScores: Record<string, number> = {
+          SBER: 0.6, GAZP: -0.5, LKOH: 0.5, YNDX: 0.7, GMKN: -0.3, NLMK: 0.2, ROSN: 0.4, MTSS: 0.2,
+        };
+        const eventBoost = eventScores[ticker7] ?? 0;
+        signal = Math.max(-1, Math.min(1, signal + eventBoost * 0.3));
+        indicators = [{
+          name: 'Event Score',
+          value: Math.round(eventBoost * 100),
+          signal: eventBoost > 0.2 ? 'buy' : eventBoost < -0.2 ? 'sell' : 'neutral',
+          description: eventBoost > 0 ? 'Positive events' : eventBoost < 0 ? 'Negative events' : 'Neutral',
+        }];
+        break;
+      }
+
       // Trading Style — adjusts signal based on investment horizon
       case 'tradingStyle': {
         const tradingStyle = (node.data.tradingStyle as string) ?? 'swing';

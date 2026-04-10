@@ -13,6 +13,8 @@ export { RiskCapNode } from './RiskCapNode';
 export { DashboardNode } from './DashboardNode';
 export { StockAnalysisNode } from './StockAnalysisNode';
 export { TradingStyleNode } from './TradingStyleNode';
+export { DividendNode } from './DividendNode';
+export { EventRepricingNode } from './EventRepricingNode';
 export { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
 
 import type { ComponentType } from 'react';
@@ -32,6 +34,8 @@ import { RiskCapNode } from './RiskCapNode';
 import { DashboardNode } from './DashboardNode';
 import { StockAnalysisNode } from './StockAnalysisNode';
 import { TradingStyleNode } from './TradingStyleNode';
+import { DividendNode } from './DividendNode';
+import { EventRepricingNode } from './EventRepricingNode';
 import { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
 
 export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
@@ -59,4 +63,6 @@ export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
   profitability: ProfitabilityNode as ComponentType<NodeProps>,
   portfolioScore: PortfolioScoreNode as ComponentType<NodeProps>,
   tradingStyle: TradingStyleNode as ComponentType<NodeProps>,
+  dividendCapture: DividendNode as ComponentType<NodeProps>,
+  eventRepricing: EventRepricingNode as ComponentType<NodeProps>,
 };

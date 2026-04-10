@@ -142,4 +142,56 @@ export const TEMPLATES: Template[] = [
       { id: 'fe12', source: 'pf1', target: 'ps1', animated: true, style: edgeStyle },
     ],
   },
+
+  // ─── Dividend Capture ─────────────────────────
+  {
+    name: 'Dividend Capture',
+    description: 'Отбор акций по дивидендной доходности',
+    icon: '💎',
+    segment: 'pro' as SegmentMode,
+    nodes: [
+      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'LKOH', weight: 0.7 } },
+      { id: 'dc1', type: 'dividendCapture', position: { x: 500, y: 0 }, data: { weight: 0.9 } },
+      { id: 'cf1', type: 'cashFlow', position: { x: 500, y: 380 }, data: { weight: 0.6 } },
+      { id: 'pf1', type: 'profitability', position: { x: 1000, y: 0 }, data: { weight: 0.5 } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 380 }, data: { tradingStyle: 'position', weight: 0.7 } },
+      { id: 'ps1', type: 'portfolioScore', position: { x: 1500, y: 180 }, data: { weight: 1.0 } },
+    ],
+    edges: [
+      { id: 'de1', source: 'sa1', target: 'dc1', animated: true, style: edgeStyle },
+      { id: 'de2', source: 'sa1', target: 'cf1', animated: true, style: edgeStyle },
+      { id: 'de3', source: 'dc1', target: 'pf1', animated: true, style: edgeStyle },
+      { id: 'de4', source: 'cf1', target: 'ts1', animated: true, style: edgeStyle },
+      { id: 'de5', source: 'pf1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'de6', source: 'ts1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'de7', source: 'dc1', target: 'ps1', animated: true, style: edgeStyle },
+    ],
+  },
+
+  // ─── Event Repricing ────────────────────────
+  {
+    name: 'Event Repricing',
+    description: 'Переоценка после отчётов и корп. событий',
+    icon: '📰',
+    segment: 'pro' as SegmentMode,
+    nodes: [
+      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'SBER', weight: 0.7 } },
+      { id: 'er1', type: 'eventRepricing', position: { x: 500, y: 0 }, data: { weight: 0.9 } },
+      { id: 'rs1', type: 'reportSelector', position: { x: 500, y: 400 }, data: { weight: 0.3 } },
+      { id: 'sc1', type: 'sectorCompare', position: { x: 1000, y: 0 }, data: { weight: 0.6 } },
+      { id: 'da1', type: 'debtAnalysis', position: { x: 1000, y: 380 }, data: { weight: 0.5 } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 700 }, data: { tradingStyle: 'swing', weight: 0.7 } },
+      { id: 'ps1', type: 'portfolioScore', position: { x: 1500, y: 250 }, data: { weight: 1.0 } },
+    ],
+    edges: [
+      { id: 'ee1', source: 'sa1', target: 'er1', animated: true, style: edgeStyle },
+      { id: 'ee2', source: 'sa1', target: 'rs1', animated: true, style: edgeStyle },
+      { id: 'ee3', source: 'er1', target: 'sc1', animated: true, style: edgeStyle },
+      { id: 'ee4', source: 'rs1', target: 'da1', animated: true, style: edgeStyle },
+      { id: 'ee5', source: 'sc1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'ee6', source: 'da1', target: 'ts1', animated: true, style: edgeStyle },
+      { id: 'ee7', source: 'ts1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'ee8', source: 'er1', target: 'ps1', animated: true, style: edgeStyle },
+    ],
+  },
 ];
