@@ -10,7 +10,7 @@ import { GaugeWidget } from './GaugeWidget';
 import { SignalTable } from './SignalTable';
 import { TradingViewChart } from './TradingViewChart';
 import { StockChart as StockChartComponent } from './StockChart';
-import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison, fetchStockQuote, type StockQuote } from '../../lib/stockData';
+import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison, fetchStockQuote, recalcFundamentals, type StockQuote } from '../../lib/stockData';
 import type { SegmentMode, BeginnerAnalysis, YOLOAnalysis, AIAnalysis } from '../../types/nodes';
 
 export function PreviewPanel() {
@@ -84,7 +84,14 @@ export function PreviewPanel() {
     const sn = nodes.find(n => n.type === 'stockAnalysis');
     return (sn?.data?.ticker as string) ?? 'SBER';
   }, [nodes]);
-  const fundData = isFundamentalMode ? STOCKS_FUNDAMENTAL[stockTicker] : null;
+  // Use live market cap to recalculate P/E, P/S, EV/EBITDA dynamically
+  const fundData = useMemo(() => {
+    if (!isFundamentalMode) return null;
+    if (stockQuote && stockQuote.marketCap > 0) {
+      return recalcFundamentals(stockTicker, stockQuote.marketCap, stockQuote.price);
+    }
+    return STOCKS_FUNDAMENTAL[stockTicker] ?? null;
+  }, [isFundamentalMode, stockTicker, stockQuote]);
   const stressData = fundData ? getStressScore(fundData) : null;
   const sectorData = fundData ? getSectorComparison(fundData.sector) : null;
 

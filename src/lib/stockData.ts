@@ -4,7 +4,8 @@
  * Фундаментал: захардкожены реальные данные из отчётности 2024
  */
 
-// Finnhub key kept for news/calendar. MOEX ISS used for stock quotes (free, no key).
+// MOEX ISS API — free, no key needed.
+// Fundamental data: static base (from reports) + dynamic market cap from MOEX = live P/E, P/B etc.
 
 // ─── Типы ───────────────────────────────────────
 export interface StockQuote {
@@ -16,6 +17,7 @@ export interface StockQuote {
   low: number;
   open: number;
   prevClose: number;
+  marketCap: number; // in rubles (not billions)
   timestamp: number;
 }
 
@@ -168,6 +170,48 @@ export const STOCK_TICKERS = Object.keys(STOCKS_FUNDAMENTAL);
 
 export const SECTORS = [...new Set(Object.values(STOCKS_FUNDAMENTAL).map(s => s.sector))];
 
+// ─── Динамический пересчёт мультипликаторов ─────────────────
+// Используем реальную капитализацию из MOEX + статичную прибыль из отчётности
+// P/E = Market Cap / Net Income, P/B = Market Cap / Book Value, etc.
+export function recalcFundamentals(ticker: string, liveMarketCap: number, livePrice: number): FundamentalData | null {
+  const base = STOCKS_FUNDAMENTAL[ticker];
+  if (!base) return null;
+
+  // Clone base data
+  const updated = { ...base };
+
+  // Update with live data
+  updated.currentPrice = livePrice;
+  updated.marketCap = Math.round(liveMarketCap / 1e9); // convert to billions
+
+  // Recalculate market-dependent multiples
+  if (updated.netIncome > 0) {
+    updated.pe = Math.round((updated.marketCap / updated.netIncome) * 10) / 10;
+  }
+  if (updated.revenue > 0) {
+    updated.ps = Math.round((updated.marketCap / updated.revenue) * 10) / 10;
+  }
+  if (updated.ebitda > 0) {
+    updated.ev = updated.marketCap + updated.netDebt;
+    updated.evEbitda = Math.round((updated.ev / updated.ebitda) * 10) / 10;
+  }
+
+  // Recalculate upside from live price
+  if (updated.fairValue > 0 && livePrice > 0) {
+    updated.upside = Math.round(((updated.fairValue / livePrice) - 1) * 1000) / 10;
+  }
+
+  // Dividend yield from live price
+  // Use annual dividend per share (estimated from total dividends)
+  const sharesOutstanding = liveMarketCap / livePrice;
+  if (sharesOutstanding > 0 && updated.divYield > 0) {
+    // Keep divYield from report as it reflects declared dividends
+    // But if we had actual DPS we'd recalculate here
+  }
+
+  return updated;
+}
+
 // ─── Котировки через MOEX ISS API (бесплатно, без ключа) ────
 let quoteCache: Record<string, { data: StockQuote; timestamp: number }> = {};
 const QUOTE_TTL = 30_000; // 30 seconds
@@ -180,7 +224,7 @@ export async function fetchStockQuote(ticker: string): Promise<StockQuote | null
 
   try {
     const res = await fetch(
-      `https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/${ticker}.json?iss.meta=off&iss.only=marketdata&marketdata.columns=SECID,LAST,CHANGE,HIGH,LOW,OPEN`
+      `https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/${ticker}.json?iss.meta=off&iss.only=marketdata&marketdata.columns=SECID,LAST,CHANGE,HIGH,LOW,OPEN,ISSUECAPITALIZATION`
     );
     if (!res.ok) return null;
 
@@ -197,6 +241,7 @@ export async function fetchStockQuote(ticker: string): Promise<StockQuote | null
       low: row[4] ?? row[1],
       open: row[5] ?? row[1],
       prevClose: row[1] - (row[2] ?? 0),
+      marketCap: row[6] ?? 0,
       timestamp: Date.now(),
     };
 
@@ -213,7 +258,7 @@ export async function fetchAllQuotes(): Promise<Record<string, StockQuote>> {
   try {
     const tickers = STOCK_TICKERS.join(',');
     const res = await fetch(
-      `https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=marketdata&marketdata.columns=SECID,LAST,CHANGE,HIGH,LOW,OPEN&securities=${tickers}`
+      `https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=marketdata&marketdata.columns=SECID,LAST,CHANGE,HIGH,LOW,OPEN,ISSUECAPITALIZATION&securities=${tickers}`
     );
     if (!res.ok) return {};
 
@@ -232,6 +277,7 @@ export async function fetchAllQuotes(): Promise<Record<string, StockQuote>> {
         low: row[4] ?? row[1],
         open: row[5] ?? row[1],
         prevClose: row[1] - (row[2] ?? 0),
+        marketCap: row[6] ?? 0,
         timestamp: Date.now(),
       };
       result[row[0]] = quote;
