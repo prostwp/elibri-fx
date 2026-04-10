@@ -388,6 +388,35 @@ export function evaluateGraph(
         break;
       }
 
+      // Trading Style — adjusts signal based on investment horizon
+      case 'tradingStyle': {
+        const tradingStyle = (node.data.tradingStyle as string) ?? 'swing';
+        // Long-term styles amplify fundamental signals, short-term dampen them
+        const styleMultiplier: Record<string, number> = {
+          scalping: 0.2,     // fundamentals barely matter for scalping
+          daytrading: 0.4,   // some relevance
+          swing: 0.7,        // moderate relevance
+          position: 1.0,     // full relevance
+          longterm: 1.2,     // amplified — fundamentals are everything
+        };
+        const mult = styleMultiplier[tradingStyle] ?? 0.7;
+
+        if (incoming.length > 0) {
+          const totalW = incoming.reduce((s, i) => s + i.weight, 0);
+          signal = totalW > 0
+            ? (incoming.reduce((s, i) => s + i.signal * i.weight, 0) / totalW) * mult
+            : 0;
+          signal = Math.max(-1, Math.min(1, signal));
+        }
+        indicators = [{
+          name: 'Trading Style',
+          value: Math.round(mult * 100),
+          signal: signal > 0.1 ? 'buy' : signal < -0.1 ? 'sell' : 'neutral',
+          description: `${tradingStyle} — fundamental weight ${Math.round(mult * 100)}%`,
+        }];
+        break;
+      }
+
       // Portfolio Score — final aggregation
       case 'portfolioScore': {
         if (incoming.length > 0) {

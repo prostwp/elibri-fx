@@ -122,6 +122,8 @@ export const TEMPLATES: Template[] = [
       // Col 3: Second analysis layer
       { id: 'pf1', type: 'profitability', position: { x: 960, y: 0 }, data: { weight: 0.7 } },
       { id: 'sc1', type: 'sectorCompare', position: { x: 960, y: 400 }, data: { weight: 0.5 } },
+      // Col 3.5: Trading Style
+      { id: 'ts1', type: 'tradingStyle', position: { x: 960, y: 700 }, data: { tradingStyle: 'swing', weight: 0.8 } },
       // Col 4: Output
       { id: 'ps1', type: 'portfolioScore', position: { x: 1400, y: 250 }, data: { weight: 1.0 } },
     ],
@@ -133,9 +135,11 @@ export const TEMPLATES: Template[] = [
       { id: 'fe5', source: 'cf1', target: 'pf1', animated: true, style: edgeStyle },
       { id: 'fe6', source: 'cf1', target: 'sc1', animated: true, style: edgeStyle },
       { id: 'fe7', source: 'da1', target: 'sc1', animated: true, style: edgeStyle },
-      { id: 'fe8', source: 'pf1', target: 'ps1', animated: true, style: edgeStyle },
-      { id: 'fe9', source: 'sc1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'fe8', source: 'pf1', target: 'ts1', animated: true, style: edgeStyle },
+      { id: 'fe9', source: 'sc1', target: 'ts1', animated: true, style: edgeStyle },
       { id: 'fe10', source: 'da1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'fe11', source: 'ts1', target: 'ps1', animated: true, style: edgeStyle },
+      { id: 'fe12', source: 'pf1', target: 'ps1', animated: true, style: edgeStyle },
     ],
   },
 ];

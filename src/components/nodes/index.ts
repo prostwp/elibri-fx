@@ -12,6 +12,7 @@ export { GuidedTraderNode } from './GuidedTraderNode';
 export { RiskCapNode } from './RiskCapNode';
 export { DashboardNode } from './DashboardNode';
 export { StockAnalysisNode } from './StockAnalysisNode';
+export { TradingStyleNode } from './TradingStyleNode';
 export { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
 
 import type { ComponentType } from 'react';
@@ -30,6 +31,7 @@ import { GuidedTraderNode } from './GuidedTraderNode';
 import { RiskCapNode } from './RiskCapNode';
 import { DashboardNode } from './DashboardNode';
 import { StockAnalysisNode } from './StockAnalysisNode';
+import { TradingStyleNode } from './TradingStyleNode';
 import { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
 
 export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
@@ -56,4 +58,5 @@ export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
   sectorCompare: SectorCompareNode as ComponentType<NodeProps>,
   profitability: ProfitabilityNode as ComponentType<NodeProps>,
   portfolioScore: PortfolioScoreNode as ComponentType<NodeProps>,
+  tradingStyle: TradingStyleNode as ComponentType<NodeProps>,
 };

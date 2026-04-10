@@ -171,6 +171,17 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
     defaultData: {},
   },
   {
+    type: 'tradingStyle',
+    label: 'Trading Style',
+    category: 'agent',
+    icon: '🎯',
+    description: 'Скальпинг, свинг или долгосрок',
+    premium: false,
+    inputs: ['analysis'],
+    outputs: ['style'],
+    defaultData: { tradingStyle: 'swing' },
+  },
+  {
     type: 'portfolioScore',
     label: 'Portfolio Score',
     category: 'output',
