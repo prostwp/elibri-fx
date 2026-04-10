@@ -556,16 +556,12 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }
   sector: SectorComparison | null;
   onRefresh: () => void;
 }) {
-  const score = graphResult.finalScore;
-  const verdict = score > 0.5 ? 'STRONG BUY' : score > 0.2 ? 'BUY' : score > -0.2 ? 'HOLD' : 'AVOID';
+  // Portfolio score derived from graph engine (weights affect this!)
+  // finalScore is -1..+1, convert to 0..100
+  const graphScore = graphResult.finalScore;
+  const portfolioScore = Math.round(Math.max(0, Math.min(100, (graphScore + 1) * 50)));
+  const verdict = portfolioScore >= 80 ? 'STRONG BUY' : portfolioScore >= 60 ? 'BUY' : portfolioScore >= 40 ? 'HOLD' : 'AVOID';
   const verdictColor = verdict === 'STRONG BUY' || verdict === 'BUY' ? 'text-emerald-400' : verdict === 'HOLD' ? 'text-amber-400' : 'text-red-400';
-
-  // Portfolio score (simplified from PortfolioScoreNode)
-  let portfolioScore = 0;
-  if (fund.pe < 6) portfolioScore += 25; else if (fund.pe < 12) portfolioScore += 15; else portfolioScore += 5;
-  if (fund.roe > 20) portfolioScore += 25; else if (fund.roe > 10) portfolioScore += 15; else portfolioScore += 5;
-  if (fund.fcf > 0 && fund.fcfGrowth > 0) portfolioScore += 25; else if (fund.fcf > 0) portfolioScore += 15;
-  if (fund.netDebtEbitda < 1) portfolioScore += 25; else if (fund.netDebtEbitda < 2) portfolioScore += 15; else portfolioScore += 5;
 
   return (
     <>
