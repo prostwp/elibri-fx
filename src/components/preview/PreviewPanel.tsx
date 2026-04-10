@@ -84,6 +84,15 @@ export function PreviewPanel() {
     const sn = nodes.find(n => n.type === 'stockAnalysis');
     return (sn?.data?.ticker as string) ?? 'SBER';
   }, [nodes]);
+
+  // Fetch live quote for stock (must be before fundData)
+  const [stockQuote, setStockQuote] = useState<StockQuote | null>(null);
+  useEffect(() => {
+    if (isFundamentalMode) {
+      fetchStockQuote(stockTicker).then(q => { if (q) setStockQuote(q); });
+    }
+  }, [stockTicker, isFundamentalMode, refreshKey]);
+
   // Use live market cap to recalculate P/E, P/S, EV/EBITDA dynamically
   const fundData = useMemo(() => {
     if (!isFundamentalMode) return null;
@@ -94,14 +103,6 @@ export function PreviewPanel() {
   }, [isFundamentalMode, stockTicker, stockQuote]);
   const stressData = fundData ? getStressScore(fundData) : null;
   const sectorData = fundData ? getSectorComparison(fundData.sector) : null;
-
-  // Fetch live quote for stock
-  const [stockQuote, setStockQuote] = useState<StockQuote | null>(null);
-  useEffect(() => {
-    if (isFundamentalMode) {
-      fetchStockQuote(stockTicker).then(q => { if (q) setStockQuote(q); });
-    }
-  }, [stockTicker, isFundamentalMode, refreshKey]);
 
   return (
     <div className="w-[340px] min-w-[340px] bg-[#0d0d14] border-l border-white/5 flex flex-col h-full overflow-hidden">
