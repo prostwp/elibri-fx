@@ -317,45 +317,45 @@ export function ProfitabilityNode({ id, data }: NodeProps) {
 }
 
 // ═══════════════════════════════════════════════════
-// 6. Portfolio Score — итоговый скоринг
+// 6. Portfolio Score — итоговый скоринг (uses graph engine)
 // ═══════════════════════════════════════════════════
+import { evaluateGraph } from '../../lib/graphEngine';
+import { useMT5Store } from '../../stores/useMT5Store';
+import { DEMO_PAIRS } from '../../lib/demoData';
+
 export function PortfolioScoreNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
+  const edges = useFlowStore(s => s.edges);
+  const selectedPair = useFlowStore(s => s.selectedPair);
   const weight = (data.weight as number) ?? 0.5;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
 
+  const liveCandles = useMT5Store(s => s.candles);
+  const mt5Status = useMT5Store(s => s.status);
+  const demoPair = DEMO_PAIRS[selectedPair] ?? DEMO_PAIRS.EURUSD;
+  const candles = (mt5Status === 'connected' && liveCandles[selectedPair]?.length > 0)
+    ? liveCandles[selectedPair] : demoPair.candles;
+
+  // Use same graph engine as preview panel
+  const graphResult = useMemo(() => evaluateGraph(nodes, edges, candles), [nodes, edges, candles]);
+  const graphScore = graphResult.finalScore;
+  const portfolioScore = Math.round(Math.max(0, Math.min(100, (graphScore + 1) * 50)));
+
   const score = useMemo(() => {
-    if (!fund) return { total: 0, verdict: 'N/A', factors: [] as string[] };
+    const verdict = portfolioScore >= 80 ? 'STRONG BUY' : portfolioScore >= 60 ? 'BUY' : portfolioScore >= 40 ? 'HOLD' : 'AVOID';
 
-    let total = 0;
     const factors: string[] = [];
+    // Derive factors from graph signals
+    for (const sig of graphResult.signals) {
+      if (sig.signal > 0.3) factors.push(`${sig.label}: позитивный сигнал`);
+      else if (sig.signal < -0.3) factors.push(`${sig.label}: негативный сигнал`);
+    }
+    if (factors.length === 0) factors.push('Смешанные сигналы');
 
-    // Valuation (0-25)
-    if (fund.pe < 6) { total += 25; factors.push('Низкий P/E — недооценена'); }
-    else if (fund.pe < 12) { total += 15; factors.push('Умеренный P/E'); }
-    else { total += 5; factors.push('Высокий P/E — дорого'); }
-
-    // Profitability (0-25)
-    if (fund.roe > 20) { total += 25; factors.push('Высокая рентабельность'); }
-    else if (fund.roe > 10) { total += 15; factors.push('Нормальная рентабельность'); }
-    else { total += 5; factors.push('Низкая рентабельность'); }
-
-    // Cash Flow (0-25)
-    if (fund.fcf > 0 && fund.fcfGrowth > 0) { total += 25; factors.push('FCF растёт'); }
-    else if (fund.fcf > 0) { total += 15; factors.push('FCF положительный'); }
-    else { total += 0; factors.push('FCF отрицательный — осторожно'); }
-
-    // Debt (0-25)
-    if (fund.netDebtEbitda < 1) { total += 25; factors.push('Минимальный долг'); }
-    else if (fund.netDebtEbitda < 2) { total += 15; factors.push('Умеренный долг'); }
-    else { total += 5; factors.push('Высокий долг'); }
-
-    const verdict = total >= 80 ? 'STRONG BUY' : total >= 60 ? 'BUY' : total >= 40 ? 'HOLD' : 'AVOID';
-
-    return { total, verdict, factors };
-  }, [fund]);
+    return { total: portfolioScore, verdict, factors };
+  }, [portfolioScore, graphResult]);
 
   if (!fund) return null;
 
