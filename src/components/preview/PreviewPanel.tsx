@@ -829,72 +829,82 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
         }))} />
       </Section>
 
-      {/* Backtest Results */}
-      <Section title="Backtest (6 мес)">
+      {/* Backtest — FOMO style */}
+      <Section title="Что было бы если...">
         {backtestLoading ? (
           <div className="flex items-center justify-center py-6">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-            <span className="ml-2 text-[10px] text-gray-500">Прогоняю стратегию по истории...</span>
+            <span className="ml-2 text-[10px] text-gray-500">Анализирую историю...</span>
           </div>
         ) : backtestResult ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            {/* FOMO header */}
+            <div className="text-center">
+              <div className="text-[10px] text-gray-500 mb-1">Если бы вы вложили 6 месяцев назад</div>
+              <div className="text-[22px] font-black text-white">1 000 000 ₽</div>
+            </div>
+
             {/* Equity curve */}
             <BacktestChart equityCurve={backtestResult.equityCurve} initialValue={1000000} />
 
-            {/* Key metrics */}
-            <div className="grid grid-cols-2 gap-1.5">
-              <div className={`rounded-lg px-2 py-1.5 text-center border ${
-                backtestResult.totalReturn >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'
-              }`}>
-                <div className="text-[8px] text-gray-500">Стратегия</div>
-                <div className={`text-[13px] font-black ${backtestResult.totalReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {backtestResult.totalReturn > 0 ? '+' : ''}{backtestResult.totalReturn}%
-                </div>
+            {/* Result — big number */}
+            <div className={`text-center py-3 rounded-xl border ${
+              backtestResult.totalReturn > 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'
+            }`}>
+              <div className="text-[10px] text-gray-500 mb-1">Сегодня у вас было бы</div>
+              <div className={`text-[26px] font-black ${backtestResult.totalReturn > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {(1000000 + 1000000 * backtestResult.totalReturn / 100).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
               </div>
-              <div className="rounded-lg px-2 py-1.5 text-center border bg-white/[0.03] border-white/10">
-                <div className="text-[8px] text-gray-500">Buy & Hold</div>
-                <div className={`text-[13px] font-black ${backtestResult.buyHoldReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {backtestResult.buyHoldReturn > 0 ? '+' : ''}{backtestResult.buyHoldReturn}%
+              <div className={`text-[14px] font-bold mt-1 ${backtestResult.totalReturn > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {backtestResult.totalReturn > 0 ? '+' : ''}{backtestResult.totalReturn}% за 6 мес
+              </div>
+              {backtestResult.totalReturn > 0 && (
+                <div className="text-[10px] text-emerald-400/60 mt-1">
+                  +{(1000000 * backtestResult.totalReturn / 100).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽ чистой прибыли
+                </div>
+              )}
+            </div>
+
+            {/* vs Buy & Hold */}
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
+              <div className="text-[9px] text-gray-500 mb-1.5 text-center">Сравнение с простой покупкой</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-center">
+                  <div className="text-[8px] text-gray-500">Стратегия Elibri</div>
+                  <div className={`text-[14px] font-black ${backtestResult.totalReturn > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {backtestResult.totalReturn > 0 ? '+' : ''}{backtestResult.totalReturn}%
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[8px] text-gray-500">Просто купить {fund.ticker}</div>
+                  <div className={`text-[14px] font-black ${backtestResult.buyHoldReturn > 0 ? 'text-white' : 'text-red-400'}`}>
+                    {backtestResult.buyHoldReturn > 0 ? '+' : ''}{backtestResult.buyHoldReturn}%
+                  </div>
                 </div>
               </div>
             </div>
 
+            {/* Risk metrics */}
             <div className="space-y-1">
               <div className="flex justify-between text-[9px]">
                 <span className="text-gray-500">Sharpe Ratio</span>
-                <span className={`font-bold ${backtestResult.sharpeRatio > 1 ? 'text-emerald-400' : backtestResult.sharpeRatio > 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                <span className={`font-bold ${backtestResult.sharpeRatio > 1 ? 'text-emerald-400' : backtestResult.sharpeRatio > 0 ? 'text-amber-400' : 'text-gray-500'}`}>
                   {backtestResult.sharpeRatio}
                 </span>
               </div>
               <div className="flex justify-between text-[9px]">
-                <span className="text-gray-500">Max Drawdown</span>
+                <span className="text-gray-500">Макс. просадка</span>
                 <span className="text-red-400 font-bold">-{backtestResult.maxDrawdown}%</span>
               </div>
               <div className="flex justify-between text-[9px]">
-                <span className="text-gray-500">Win Rate</span>
-                <span className={`font-bold ${backtestResult.winRate > 50 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {backtestResult.winRate}% ({backtestResult.profitableTrades}/{backtestResult.totalTrades})
-                </span>
-              </div>
-              <div className="flex justify-between text-[9px]">
-                <span className="text-gray-500">Avg Win / Loss</span>
-                <span className="text-white text-[9px]">+{backtestResult.avgWin}% / -{backtestResult.avgLoss}%</span>
+                <span className="text-gray-500">Сделок</span>
+                <span className="text-white font-bold">{backtestResult.totalTrades} (Win: {backtestResult.winRate}%)</span>
               </div>
             </div>
 
-            <div className="text-[8px] text-gray-600 text-center">
-              {backtestResult.period} • Начальный капитал: 1 000 000 ₽
+            <div className="text-[7px] text-gray-600 text-center leading-relaxed">
+              Результаты на исторических данных MOEX за период {backtestResult.period}. Прошлые результаты не гарантируют будущую доходность.
             </div>
-
-            {backtestResult.totalReturn > backtestResult.buyHoldReturn ? (
-              <div className="text-center py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-[9px] text-emerald-400 font-bold">
-                Стратегия обгоняет Buy & Hold на {Math.round((backtestResult.totalReturn - backtestResult.buyHoldReturn) * 100) / 100}%
-              </div>
-            ) : (
-              <div className="text-center py-1 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] text-amber-400 font-bold">
-                Buy & Hold лучше на {Math.round((backtestResult.buyHoldReturn - backtestResult.totalReturn) * 100) / 100}%
-              </div>
-            )}
           </div>
         ) : (
           <div className="text-[10px] text-gray-500 text-center py-4">Нет данных для бэктеста</div>
