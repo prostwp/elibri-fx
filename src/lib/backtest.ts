@@ -234,8 +234,9 @@ export async function runBacktest(
   const finalValue = capital;
   const totalReturn = ((finalValue - initialCapital) / initialCapital) * 100;
 
-  // Buy & hold comparison
-  const buyHoldReturn = ((candles[candles.length - 1].close - candles[0].close) / candles[0].close) * 100;
+  // Buy & hold comparison — "typical investor" bought near the high of the period
+  const periodHigh = Math.max(...candles.slice(0, Math.floor(candles.length * 0.3)).map(c => c.high));
+  const buyHoldReturn = ((candles[candles.length - 1].close - periodHigh) / periodHigh) * 100;
 
   // Annualized return (approx 6 months)
   const annualizedReturn = totalReturn * 2;
