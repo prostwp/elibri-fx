@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import type { Node, Edge } from '@xyflow/react';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
 import { DEMO_PAIRS } from '../../lib/demoData';
@@ -11,6 +12,8 @@ import { SignalTable } from './SignalTable';
 import { TradingViewChart } from './TradingViewChart';
 import { StockChart as StockChartComponent } from './StockChart';
 import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison, fetchStockQuote, recalcFundamentals, type StockQuote } from '../../lib/stockData';
+import { runBacktest, type BacktestResult } from '../../lib/backtest';
+import { BacktestChart } from './BacktestChart';
 import type { SegmentMode, BeginnerAnalysis, YOLOAnalysis, AIAnalysis } from '../../types/nodes';
 
 export function PreviewPanel() {
@@ -244,6 +247,8 @@ export function PreviewPanel() {
               stress={stressData}
               sector={sectorData}
               onRefresh={onRefresh}
+              nodes={nodes}
+              edges={edges}
             />
           ) : (
             <>
@@ -556,14 +561,27 @@ function YOLOView({ analysis, symbol, onRefresh }: { analysis: YOLOAnalysis; sym
 import type { GraphResult } from '../../lib/graphEngine';
 import type { FundamentalData, SectorComparison } from '../../lib/stockData';
 
-function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }: {
+function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, nodes, edges }: {
   fund: FundamentalData;
   graphResult: GraphResult;
   quote: StockQuote | null;
   stress: ReturnType<typeof getStressScore> | null;
   sector: SectorComparison | null;
   onRefresh: () => void;
+  nodes: Node[];
+  edges: Edge[];
 }) {
+  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [backtestLoading, setBacktestLoading] = useState(false);
+
+  // Auto-run backtest when nodes/ticker change
+  useEffect(() => {
+    setBacktestLoading(true);
+    runBacktest(nodes, edges, fund.ticker).then(result => {
+      setBacktestResult(result);
+      setBacktestLoading(false);
+    });
+  }, [nodes, edges, fund.ticker]);
   // Portfolio score derived from graph engine (weights affect this!)
   // finalScore is -1..+1, convert to 0..100
   const graphScore = graphResult.finalScore;
@@ -809,6 +827,78 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh }
           direction: s.signal > 0.1 ? 'long' as const : s.signal < -0.1 ? 'short' as const : 'neutral' as const,
           strength: Math.min(95, Math.round(50 + Math.abs(s.signal) * 45)),
         }))} />
+      </Section>
+
+      {/* Backtest Results */}
+      <Section title="Backtest (6 мес)">
+        {backtestLoading ? (
+          <div className="flex items-center justify-center py-6">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+            <span className="ml-2 text-[10px] text-gray-500">Прогоняю стратегию по истории...</span>
+          </div>
+        ) : backtestResult ? (
+          <div className="space-y-2">
+            {/* Equity curve */}
+            <BacktestChart equityCurve={backtestResult.equityCurve} initialValue={1000000} />
+
+            {/* Key metrics */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className={`rounded-lg px-2 py-1.5 text-center border ${
+                backtestResult.totalReturn >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'
+              }`}>
+                <div className="text-[8px] text-gray-500">Стратегия</div>
+                <div className={`text-[13px] font-black ${backtestResult.totalReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {backtestResult.totalReturn > 0 ? '+' : ''}{backtestResult.totalReturn}%
+                </div>
+              </div>
+              <div className="rounded-lg px-2 py-1.5 text-center border bg-white/[0.03] border-white/10">
+                <div className="text-[8px] text-gray-500">Buy & Hold</div>
+                <div className={`text-[13px] font-black ${backtestResult.buyHoldReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {backtestResult.buyHoldReturn > 0 ? '+' : ''}{backtestResult.buyHoldReturn}%
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-500">Sharpe Ratio</span>
+                <span className={`font-bold ${backtestResult.sharpeRatio > 1 ? 'text-emerald-400' : backtestResult.sharpeRatio > 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {backtestResult.sharpeRatio}
+                </span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-500">Max Drawdown</span>
+                <span className="text-red-400 font-bold">-{backtestResult.maxDrawdown}%</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-500">Win Rate</span>
+                <span className={`font-bold ${backtestResult.winRate > 50 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {backtestResult.winRate}% ({backtestResult.profitableTrades}/{backtestResult.totalTrades})
+                </span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-500">Avg Win / Loss</span>
+                <span className="text-white text-[9px]">+{backtestResult.avgWin}% / -{backtestResult.avgLoss}%</span>
+              </div>
+            </div>
+
+            <div className="text-[8px] text-gray-600 text-center">
+              {backtestResult.period} • Начальный капитал: 1 000 000 ₽
+            </div>
+
+            {backtestResult.totalReturn > backtestResult.buyHoldReturn ? (
+              <div className="text-center py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-[9px] text-emerald-400 font-bold">
+                Стратегия обгоняет Buy & Hold на {Math.round((backtestResult.totalReturn - backtestResult.buyHoldReturn) * 100) / 100}%
+              </div>
+            ) : (
+              <div className="text-center py-1 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] text-amber-400 font-bold">
+                Buy & Hold лучше на {Math.round((backtestResult.buyHoldReturn - backtestResult.totalReturn) * 100) / 100}%
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-[10px] text-gray-500 text-center py-4">Нет данных для бэктеста</div>
+        )}
       </Section>
 
       <button onClick={onRefresh} className="w-full py-2 text-[10px] bg-white/[0.03] rounded-lg text-gray-500 hover:text-white hover:bg-white/[0.06] transition">
