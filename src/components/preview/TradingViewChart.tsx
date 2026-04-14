@@ -25,6 +25,13 @@ function toTVSymbol(pair: string): string {
     NLMK: 'MOEX:NLMK',
     ROSN: 'MOEX:ROSN',
     MTSS: 'MOEX:MTSS',
+    // Crypto — Binance
+    BTCUSDT: 'BINANCE:BTCUSDT',
+    ETHUSDT: 'BINANCE:ETHUSDT',
+    SOLUSDT: 'BINANCE:SOLUSDT',
+    BNBUSDT: 'BINANCE:BNBUSDT',
+    XRPUSDT: 'BINANCE:XRPUSDT',
+    DOGEUSDT: 'BINANCE:DOGEUSDT',
   };
   if (pair.includes(':')) return pair;
   return map[pair] ?? `FX:${pair}`;

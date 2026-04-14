@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
+import { useCryptoStore } from '../../stores/useCryptoStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useReactFlow } from '@xyflow/react';
@@ -15,6 +16,7 @@ export function Toolbar() {
     currentStrategyId, currentStrategyName, dirty, saving, saveCurrentStrategy,
   } = useFlowStore();
   const { status: mt5Status, setShowConnectModal, account } = useMT5Store();
+  const { status: cryptoStatus, setShowConnectModal: setShowCryptoModal } = useCryptoStore();
   const [strategiesOpen, setStrategiesOpen] = useState(false);
   const { profile, user } = useAuthStore();
   const { signOut } = useAuth();
@@ -46,7 +48,7 @@ export function Toolbar() {
     if (!template) return;
     clear();
     setSegmentMode(template.segment);
-    const mpNode = template.nodes.find(n => n.type === 'marketPair');
+    const mpNode = template.nodes.find(n => n.type === 'marketPair' || n.type === 'cryptoSource');
     if (mpNode?.data?.pair) {
       setSelectedPair(mpNode.data.pair as string);
     }
@@ -141,6 +143,31 @@ export function Toolbar() {
             mt5Status === 'connecting' ? 'text-amber-400' : 'text-gray-300'
           }`}>
             {mt5Status === 'connected' ? 'MT5 Live' : mt5Status === 'connecting' ? 'Connecting...' : 'MT5'}
+          </span>
+        </button>
+
+        {/* Binance Button */}
+        <button
+          onClick={() => setShowCryptoModal(true)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all h-9 ${
+            cryptoStatus === 'connected' || cryptoStatus === 'public'
+              ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20 hover:border-amber-500/40'
+              : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/5 hover:border-white/15'
+          }`}
+          title={cryptoStatus === 'connected' ? 'Binance connected' : cryptoStatus === 'public' ? 'Binance public mode' : 'Connect Binance'}
+        >
+          {cryptoStatus === 'connected' || cryptoStatus === 'public' ? (
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+            </span>
+          ) : (
+            <span className="text-sm">₿</span>
+          )}
+          <span className={`text-[10px] font-semibold whitespace-nowrap ${
+            cryptoStatus === 'connected' || cryptoStatus === 'public' ? 'text-amber-400' : 'text-gray-300'
+          }`}>
+            {cryptoStatus === 'connected' ? 'Binance Live' : cryptoStatus === 'public' ? 'Binance' : 'Binance'}
           </span>
         </button>
 

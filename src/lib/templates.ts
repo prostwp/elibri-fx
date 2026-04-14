@@ -194,4 +194,60 @@ export const TEMPLATES: Template[] = [
       { id: 'ee8', source: 'er1', target: 'ps1', animated: true, style: edgeStyle },
     ],
   },
+
+  // ─── Crypto Swing ──────────────────────────────
+  {
+    name: 'Crypto Swing',
+    description: 'Swing trading strategy for crypto with ML prediction',
+    icon: '₿',
+    segment: 'pro' as SegmentMode,
+    nodes: [
+      { id: 'cs1', type: 'cryptoSource', position: { x: 0, y: 250 }, data: { pair: 'BTCUSDT' } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 300, y: 0 }, data: { tradingStyle: 'swing', weight: 0.8 } },
+      { id: 'ti1', type: 'technicalIndicator', position: { x: 300, y: 250 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'EMA'], weight: 0.7 } },
+      { id: 'sc1', type: 'cryptoScanner', position: { x: 300, y: 530 }, data: { scanMode: ['volume_spike', 'rsi_dip'], weight: 0.6 } },
+      { id: 'ml1', type: 'mlPredictor', position: { x: 650, y: 120 }, data: { weight: 0.9 } },
+      { id: 'ta1', type: 'tradingAnalyst', position: { x: 650, y: 420 }, data: { weight: 0.7 } },
+      { id: 'db1', type: 'dashboard', position: { x: 1000, y: 280 }, data: {} },
+    ],
+    edges: [
+      { id: 'ce1', source: 'cs1', target: 'ts1', animated: true, style: edgeStyle },
+      { id: 'ce2', source: 'cs1', target: 'ti1', animated: true, style: edgeStyle },
+      { id: 'ce3', source: 'cs1', target: 'sc1', animated: true, style: edgeStyle },
+      { id: 'ce4', source: 'ts1', target: 'ml1', animated: true, style: edgeStyle },
+      { id: 'ce5', source: 'ti1', target: 'ml1', animated: true, style: edgeStyle },
+      { id: 'ce6', source: 'ti1', target: 'ta1', animated: true, style: edgeStyle },
+      { id: 'ce7', source: 'sc1', target: 'ta1', animated: true, style: edgeStyle },
+      { id: 'ce8', source: 'ml1', target: 'db1', animated: true, style: edgeStyle },
+      { id: 'ce9', source: 'ta1', target: 'db1', animated: true, style: edgeStyle },
+    ],
+  },
+
+  // ─── Crypto Day Trade ──────────────────────────
+  {
+    name: 'Crypto Day Trade',
+    description: 'Day trading crypto with on-chain metrics and ML',
+    icon: '⚡',
+    segment: 'pro' as SegmentMode,
+    nodes: [
+      { id: 'cs1', type: 'cryptoSource', position: { x: 0, y: 250 }, data: { pair: 'ETHUSDT' } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 300, y: 0 }, data: { tradingStyle: 'daytrading', weight: 0.8 } },
+      { id: 'ti1', type: 'technicalIndicator', position: { x: 300, y: 250 }, data: { indicators: ['RSI', 'MACD', 'EMA'], weight: 0.7 } },
+      { id: 'oc1', type: 'onChainMetrics', position: { x: 300, y: 530 }, data: { metrics: ['whale_activity', 'exchange_inflow', 'exchange_outflow'], weight: 0.6 } },
+      { id: 'ml1', type: 'mlPredictor', position: { x: 650, y: 120 }, data: { weight: 0.9 } },
+      { id: 'rm1', type: 'riskManager', position: { x: 650, y: 420 }, data: { weight: 0.8 } },
+      { id: 'db1', type: 'dashboard', position: { x: 1000, y: 280 }, data: {} },
+    ],
+    edges: [
+      { id: 'de1', source: 'cs1', target: 'ts1', animated: true, style: edgeStyle },
+      { id: 'de2', source: 'cs1', target: 'ti1', animated: true, style: edgeStyle },
+      { id: 'de3', source: 'cs1', target: 'oc1', animated: true, style: edgeStyle },
+      { id: 'de4', source: 'ts1', target: 'ml1', animated: true, style: edgeStyle },
+      { id: 'de5', source: 'ti1', target: 'ml1', animated: true, style: edgeStyle },
+      { id: 'de6', source: 'ti1', target: 'rm1', animated: true, style: edgeStyle },
+      { id: 'de7', source: 'oc1', target: 'rm1', animated: true, style: edgeStyle },
+      { id: 'de8', source: 'ml1', target: 'db1', animated: true, style: edgeStyle },
+      { id: 'de9', source: 'rm1', target: 'db1', animated: true, style: edgeStyle },
+    ],
+  },
 ];

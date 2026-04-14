@@ -8,21 +8,31 @@ import {
 } from '@xyflow/react';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
+import { useCryptoStore } from '../../stores/useCryptoStore';
 import { nodeTypes } from '../nodes';
 import { NODE_DEFINITIONS } from '../../lib/nodeDefinitions';
-import { DEMO_PAIRS } from '../../lib/demoData';
+import { DEMO_PAIRS, DEMO_CRYPTO, CRYPTO_PAIRS } from '../../lib/demoData';
 import { evaluateGraph } from '../../lib/graphEngine';
 
 export function Canvas() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, selectedPair } = useFlowStore();
   const liveCandles = useMT5Store((s) => s.candles);
   const mt5Status = useMT5Store((s) => s.status);
+  const cryptoCandles = useCryptoStore((s) => s.candles);
+  const cryptoStatus = useCryptoStore((s) => s.status);
 
-  // Evaluate graph to color edges
-  const demoPair = DEMO_PAIRS[selectedPair] ?? DEMO_PAIRS.EURUSD;
-  const mt5CandlesForPair = liveCandles[selectedPair];
-  const candles = (mt5Status === 'connected' && mt5CandlesForPair?.length > 0)
-    ? mt5CandlesForPair : demoPair.candles;
+  // Evaluate graph to color edges — resolve candles (crypto vs forex)
+  const isCryptoPair = (CRYPTO_PAIRS as readonly string[]).includes(selectedPair);
+  const candles = useMemo(() => {
+    if (isCryptoPair) {
+      const live = cryptoCandles[selectedPair];
+      if ((cryptoStatus === 'connected' || cryptoStatus === 'public') && live?.length > 0) return live;
+      return DEMO_CRYPTO[selectedPair]?.candles ?? DEMO_PAIRS.EURUSD.candles;
+    }
+    const mt5 = liveCandles[selectedPair];
+    if (mt5Status === 'connected' && mt5?.length > 0) return mt5;
+    return DEMO_PAIRS[selectedPair]?.candles ?? DEMO_PAIRS.EURUSD.candles;
+  }, [isCryptoPair, selectedPair, cryptoCandles, cryptoStatus, liveCandles, mt5Status]);
 
   const graphResult = useMemo(
     () => evaluateGraph(nodes, edges, candles),

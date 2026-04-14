@@ -215,6 +215,52 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
     defaultData: {},
   },
 
+  // ─── Crypto ──────────────────────────────────────
+  {
+    type: 'cryptoSource',
+    label: 'Crypto Pair',
+    category: 'source',
+    icon: '₿',
+    description: 'Binance crypto pairs (BTC, ETH, SOL...)',
+    premium: false,
+    inputs: [],
+    outputs: ['data'],
+    defaultData: { pair: 'BTCUSDT' },
+  },
+  {
+    type: 'cryptoScanner',
+    label: 'Altcoin Scanner',
+    category: 'analysis',
+    icon: '🔍',
+    description: 'Volume spikes, RSI dips, price drops',
+    premium: false,
+    inputs: ['candles'],
+    outputs: ['signals'],
+    defaultData: { scanMode: ['volume_spike', 'rsi_dip'], thresholds: { volumeMultiplier: 2.5, rsiOversold: 30, dipPercent: 5 } },
+  },
+  {
+    type: 'onChainMetrics',
+    label: 'On-Chain Metrics',
+    category: 'analysis',
+    icon: '⛓️',
+    description: 'Whale activity, exchange flows',
+    premium: false,
+    inputs: ['data'],
+    outputs: ['metrics'],
+    defaultData: { metrics: ['whale_activity', 'exchange_inflow'] },
+  },
+  {
+    type: 'mlPredictor',
+    label: 'ML Predictor',
+    category: 'agent',
+    icon: '🧠',
+    description: 'TensorFlow.js price prediction',
+    premium: false,
+    inputs: ['signals', 'candles'],
+    outputs: ['prediction'],
+    defaultData: { modelStatus: 'idle', features: ['RSI', 'MACD', 'Volume', 'Volatility', 'Momentum', 'BB Position'] },
+  },
+
   // Logic
   {
     type: 'condition',

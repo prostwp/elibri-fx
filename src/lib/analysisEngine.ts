@@ -181,7 +181,7 @@ function collectIndicators(graph: GraphResult): IndicatorResult[] {
 // ─── Build signal rows for table ────────────────
 function buildSignalRows(graph: GraphResult) {
   return graph.signals
-    .filter(s => s.nodeType !== 'marketPair' && s.nodeType !== 'chartSource')
+    .filter(s => s.nodeType !== 'marketPair' && s.nodeType !== 'chartSource' && s.nodeType !== 'cryptoSource')
     .map(s => ({
       name: s.label || s.nodeType,
       direction: s.signal > 0.1 ? 'long' as const : s.signal < -0.1 ? 'short' as const : 'neutral' as const,
@@ -200,14 +200,27 @@ export function validateGraph(nodes: Node[], edges: Edge[]): GraphWarning[] {
 
   if (nodes.length === 0) return warnings;
 
-  // Detect mode: fundamental (has stockAnalysis) vs forex
+  // Detect mode: fundamental (has stockAnalysis) vs crypto vs forex
   const isFundamental = nodes.some(n => n.type === 'stockAnalysis');
+  const isCrypto = nodes.some(n => n.type === 'cryptoSource');
 
   if (isFundamental) {
     // Fundamental mode — check for stock-specific nodes
     const hasOutput = nodes.some(n => n.type === 'portfolioScore' || n.type === 'dashboard');
     if (!hasOutput) {
       warnings.push({ type: 'warning', message: 'Add a Portfolio Score node for final verdict' });
+    }
+  } else if (isCrypto) {
+    // Crypto mode
+    const hasOutput = nodes.some(n => n.type === 'dashboard');
+    const hasAnalysis = nodes.some(n =>
+      n.type === 'technicalIndicator' || n.type === 'cryptoScanner' || n.type === 'mlPredictor' || n.type === 'tradingAnalyst'
+    );
+    if (!hasOutput) {
+      warnings.push({ type: 'warning', message: 'Add a Dashboard node to see results' });
+    }
+    if (!hasAnalysis) {
+      warnings.push({ type: 'warning', message: 'Add Technical Indicators, Crypto Scanner, or ML Predictor' });
     }
   } else {
     // Forex mode

@@ -11,6 +11,8 @@ import {
 } from './indicators';
 import { detectPatterns } from './chartPatterns';
 import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison } from './stockData';
+import { calcVolumeSpike, calcPriceDip } from './cryptoIndicators';
+import { useCryptoStore } from '../stores/useCryptoStore';
 
 // Сигнал ноды: числовое значение -1 (sell) .. 0 (neutral) .. +1 (buy)
 export interface NodeSignal {
@@ -458,6 +460,133 @@ export function evaluateGraph(
         break;
       }
 
+      // ─── Crypto nodes ──────────────────────────────
+
+      // Crypto Source — pass through, same as marketPair
+      case 'cryptoSource': {
+        signal = 0;
+        break;
+      }
+
+      // Crypto Scanner — volume spikes, RSI dips, price dips
+      case 'cryptoScanner': {
+        const scanModes = (node.data.scanMode as string[]) ?? ['volume_spike', 'rsi_dip'];
+        const thresholds = (node.data.thresholds as Record<string, number>) ?? {};
+        indicators = [];
+
+        if (scanModes.includes('volume_spike')) {
+          const vs = calcVolumeSpike(candles, 20);
+          const minMult = thresholds.volumeMultiplier ?? 2.5;
+          indicators.push({
+            name: 'Volume Spike',
+            value: vs.multiplier,
+            signal: vs.multiplier > minMult ? vs.signal : 'neutral',
+            description: vs.multiplier > minMult ? `${vs.multiplier}x avg volume` : 'Normal volume',
+          });
+        }
+
+        if (scanModes.includes('rsi_dip')) {
+          const rsi = calcRSI(candles);
+          const oversold = thresholds.rsiOversold ?? 30;
+          indicators.push({
+            name: 'RSI Dip',
+            value: rsi,
+            signal: rsi < oversold ? 'buy' : rsi > (100 - oversold) ? 'sell' : 'neutral',
+            description: rsi < oversold ? `RSI oversold (${rsi})` : 'RSI normal',
+          });
+        }
+
+        if (scanModes.includes('price_dip')) {
+          const pd = calcPriceDip(candles, 20);
+          const minDip = thresholds.dipPercent ?? 5;
+          indicators.push({
+            name: 'Price Dip',
+            value: pd.dipPercent,
+            signal: pd.dipPercent < -minDip ? 'buy' : 'neutral',
+            description: pd.dipPercent < -minDip ? `${pd.dipPercent}% from high` : 'Near highs',
+          });
+        }
+
+        if (indicators.length > 0) {
+          signal = indicators.reduce((sum, ind) => sum + signalToNumber(ind.signal), 0) / indicators.length;
+        }
+        break;
+      }
+
+      // On-Chain Metrics — seeded demo signals
+      case 'onChainMetrics': {
+        const selectedMetrics = (node.data.metrics as string[]) ?? ['whale_activity', 'exchange_inflow'];
+        const seed = Math.floor(Date.now() / 300000);
+        indicators = [];
+
+        for (const metric of selectedMetrics) {
+          let v: number;
+          let s: 'buy' | 'sell' | 'neutral';
+          let desc: string;
+
+          switch (metric) {
+            case 'whale_activity':
+              v = ((seed * 7 + 13) % 100);
+              s = v > 60 ? 'buy' : v < 30 ? 'sell' : 'neutral';
+              desc = v > 60 ? 'Whales accumulating' : v < 30 ? 'Whales selling' : 'Normal';
+              break;
+            case 'exchange_inflow':
+              v = ((seed * 11 + 5) % 100);
+              s = v > 65 ? 'sell' : v < 30 ? 'buy' : 'neutral';
+              desc = v > 65 ? 'High inflow — sell pressure' : 'Normal';
+              break;
+            case 'exchange_outflow':
+              v = ((seed * 19 + 3) % 100);
+              s = v > 60 ? 'buy' : v < 25 ? 'sell' : 'neutral';
+              desc = v > 60 ? 'Coins leaving exchanges' : 'Normal';
+              break;
+            case 'active_addresses':
+              v = ((seed * 23 + 17) % 100);
+              s = v > 65 ? 'buy' : v < 30 ? 'sell' : 'neutral';
+              desc = v > 65 ? 'Rising activity' : 'Steady';
+              break;
+            default:
+              v = 50; s = 'neutral'; desc = 'Unknown';
+          }
+
+          indicators.push({ name: metric.replace(/_/g, ' '), value: v, signal: s, description: desc });
+        }
+
+        if (indicators.length > 0) {
+          signal = indicators.reduce((sum, ind) => sum + signalToNumber(ind.signal), 0) / indicators.length;
+        }
+        break;
+      }
+
+      // ML Predictor — uses ML prediction from store
+      case 'mlPredictor': {
+        const cryptoStore = useCryptoStore.getState();
+        const pair = nodes.find(n => n.type === 'cryptoSource')?.data?.pair as string
+          ?? nodes.find(n => n.type === 'marketPair')?.data?.pair as string
+          ?? 'BTCUSDT';
+        const pred = cryptoStore.mlPredictions[pair];
+
+        if (pred) {
+          // ML prediction directly as signal
+          signal = pred.direction === 'buy' ? Math.min(1, pred.confidence / 100)
+            : pred.direction === 'sell' ? -Math.min(1, pred.confidence / 100)
+            : 0;
+          indicators = [{
+            name: 'ML Prediction',
+            value: pred.confidence,
+            signal: pred.direction,
+            description: `${pred.direction.toUpperCase()} ${pred.confidence}% — target $${pred.priceTarget}`,
+          }];
+        } else if (incoming.length > 0) {
+          // Fallback: weighted average of incoming
+          const totalW = incoming.reduce((s, i) => s + i.weight, 0);
+          signal = totalW > 0
+            ? incoming.reduce((s, i) => s + i.signal * i.weight, 0) / totalW
+            : 0;
+        }
+        break;
+      }
+
       // Portfolio Score — final aggregation
       case 'portfolioScore': {
         if (incoming.length > 0) {
@@ -630,7 +759,7 @@ export function evaluateGraph(
     signalMap.set(nodeId, nodeSignal);
 
     // Only count signal-producing nodes (not source/pass-through)
-    if (type !== 'marketPair' && type !== 'chartSource') {
+    if (type !== 'marketPair' && type !== 'chartSource' && type !== 'cryptoSource') {
       allSignals.push(nodeSignal);
     }
   }

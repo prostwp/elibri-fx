@@ -16,6 +16,10 @@ export { TradingStyleNode } from './TradingStyleNode';
 export { DividendNode } from './DividendNode';
 export { EventRepricingNode } from './EventRepricingNode';
 export { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
+export { CryptoSourceNode } from './CryptoSourceNode';
+export { CryptoScannerNode } from './CryptoScannerNode';
+export { MLPredictorNode } from './MLPredictorNode';
+export { OnChainMetricsNode } from './OnChainMetricsNode';
 
 import type { ComponentType } from 'react';
 import type { NodeProps } from '@xyflow/react';
@@ -37,6 +41,10 @@ import { TradingStyleNode } from './TradingStyleNode';
 import { DividendNode } from './DividendNode';
 import { EventRepricingNode } from './EventRepricingNode';
 import { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
+import { CryptoSourceNode } from './CryptoSourceNode';
+import { CryptoScannerNode } from './CryptoScannerNode';
+import { MLPredictorNode } from './MLPredictorNode';
+import { OnChainMetricsNode } from './OnChainMetricsNode';
 
 export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
   marketPair: MarketPairNode,
@@ -65,4 +73,8 @@ export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
   tradingStyle: TradingStyleNode as ComponentType<NodeProps>,
   dividendCapture: DividendNode as ComponentType<NodeProps>,
   eventRepricing: EventRepricingNode as ComponentType<NodeProps>,
+  cryptoSource: CryptoSourceNode as ComponentType<NodeProps>,
+  cryptoScanner: CryptoScannerNode as ComponentType<NodeProps>,
+  mlPredictor: MLPredictorNode as ComponentType<NodeProps>,
+  onChainMetrics: OnChainMetricsNode as ComponentType<NodeProps>,
 };

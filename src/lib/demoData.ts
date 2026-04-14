@@ -55,6 +55,31 @@ export const DEMO_NEWS = [
   { time: '12h ago', title: 'Gold surges past $3000 on safe-haven demand', sentiment: 'bullish' as const, impact: 'medium' as const },
 ];
 
+// ─── Crypto Demo Data ────────────────────────────
+
+export const CRYPTO_PAIRS = [
+  'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT',
+] as const;
+
+export type CryptoPairKey = typeof CRYPTO_PAIRS[number];
+
+export const DEMO_CRYPTO: Record<string, { candles: OHLCVCandle[]; displayName: string; pipSize: number }> = {
+  BTCUSDT: { candles: generateCandles(67500, 200, 800), displayName: 'BTC/USDT', pipSize: 0.01 },
+  ETHUSDT: { candles: generateCandles(3450, 200, 60), displayName: 'ETH/USDT', pipSize: 0.01 },
+  SOLUSDT: { candles: generateCandles(145, 200, 5), displayName: 'SOL/USDT', pipSize: 0.01 },
+  BNBUSDT: { candles: generateCandles(580, 200, 12), displayName: 'BNB/USDT', pipSize: 0.01 },
+  XRPUSDT: { candles: generateCandles(0.58, 200, 0.015), displayName: 'XRP/USDT', pipSize: 0.0001 },
+  DOGEUSDT: { candles: generateCandles(0.16, 200, 0.005), displayName: 'DOGE/USDT', pipSize: 0.0001 },
+};
+
+export const DEMO_SCAN_RESULTS: import('../types/nodes').CryptoScanResult[] = [
+  { symbol: 'SOLUSDT', signal: 'buy', score: 82, reason: 'Volume spike 3.2x + RSI oversold (24)', volume24h: 2800000000, priceChange24h: -5.3 },
+  { symbol: 'DOGEUSDT', signal: 'buy', score: 71, reason: 'Price dip -8.5% + volume rising', volume24h: 1200000000, priceChange24h: -8.5 },
+  { symbol: 'XRPUSDT', signal: 'neutral', score: 55, reason: 'RSI neutral zone, volume steady', volume24h: 900000000, priceChange24h: -1.2 },
+  { symbol: 'BNBUSDT', signal: 'sell', score: 38, reason: 'Overbought RSI (78) + declining volume', volume24h: 600000000, priceChange24h: 4.1 },
+  { symbol: 'ETHUSDT', signal: 'buy', score: 67, reason: 'BB squeeze + momentum building', volume24h: 5500000000, priceChange24h: -3.2 },
+];
+
 export const DEMO_CALENDAR = [
   { date: 'Today 14:30', event: 'US Non-Farm Payrolls', impact: 'high' as const, forecast: '200K', previous: '275K', currency: 'USD', minutesUntil: -30 },
   { date: 'Today 16:00', event: 'ISM Services PMI', impact: 'high' as const, forecast: '52.8', previous: '52.6', currency: 'USD', minutesUntil: 60 },

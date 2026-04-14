@@ -5,6 +5,7 @@ import { Canvas } from '../editor/Canvas';
 import { Toolbar } from '../editor/Toolbar';
 import { PreviewPanel } from '../preview/PreviewPanel';
 import { MT5ConnectModal } from '../editor/MT5ConnectModal';
+import { BinanceConnectModal } from '../editor/BinanceConnectModal';
 import { ToastContainer, toast } from '../ui/Toast';
 import { Onboarding } from '../ui/Onboarding';
 import { useFlowStore } from '../../stores/useFlowStore';
@@ -42,6 +43,7 @@ export function AppLayout() {
         </div>
         <PreviewPanel />
         <MT5ConnectModal />
+        <BinanceConnectModal />
       </div>
       <ToastContainer />
       <Onboarding />

@@ -111,3 +111,50 @@ export interface YOLOAnalysis extends AIAnalysis {
   dailyLossUsed: number;
   maxDailyLoss: number;
 }
+
+// ─── Crypto Module Types ─────────────────────────
+
+export type CryptoPair = 'BTCUSDT' | 'ETHUSDT' | 'SOLUSDT' | 'BNBUSDT' | 'XRPUSDT' | 'DOGEUSDT';
+
+export interface CryptoSourceData {
+  pair: CryptoPair;
+  [key: string]: unknown;
+}
+
+export interface CryptoScannerData {
+  scanMode: ('volume_spike' | 'rsi_dip' | 'price_dip')[];
+  thresholds: {
+    volumeMultiplier: number;
+    rsiOversold: number;
+    dipPercent: number;
+  };
+  [key: string]: unknown;
+}
+
+export interface MLPredictorData {
+  modelStatus: 'idle' | 'loading' | 'ready' | 'error';
+  features: string[];
+  [key: string]: unknown;
+}
+
+export interface OnChainMetricsData {
+  metrics: string[];
+  [key: string]: unknown;
+}
+
+export interface CryptoScanResult {
+  symbol: string;
+  signal: 'buy' | 'sell' | 'neutral';
+  score: number;
+  reason: string;
+  volume24h: number;
+  priceChange24h: number;
+}
+
+export interface MLPrediction {
+  direction: 'buy' | 'sell' | 'neutral';
+  confidence: number;
+  priceTarget: number;
+  timeframe: string;
+  features: Record<string, number>;
+}

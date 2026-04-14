@@ -2,7 +2,8 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
-import { DEMO_PAIRS } from '../../lib/demoData';
+import { useCryptoStore } from '../../stores/useCryptoStore';
+import { DEMO_PAIRS, DEMO_CRYPTO, CRYPTO_PAIRS } from '../../lib/demoData';
 import { getIndicatorSignals } from '../../lib/indicators';
 import { generateMockAnalysis, generateBeginnerAnalysis, generateYOLOAnalysis } from '../../lib/mockAI';
 import { evaluateGraph } from '../../lib/graphEngine';
@@ -19,17 +20,30 @@ import type { SegmentMode, BeginnerAnalysis, YOLOAnalysis, AIAnalysis } from '..
 export function PreviewPanel() {
   const { nodes, edges, selectedPair, segmentMode, setSegmentMode } = useFlowStore();
   const { status: mt5Status, candles: liveCandles, account } = useMT5Store();
+  const { status: cryptoStatus, candles: cryptoCandles } = useCryptoStore();
   const [refreshKey, setRefreshKey] = useState(0);
   const onRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
-  // Use live candles if MT5 connected and available, otherwise demo
-  const demoPair = DEMO_PAIRS[selectedPair] ?? DEMO_PAIRS.EURUSD;
-  const mt5CandlesForPair = liveCandles[selectedPair];
-  const isLive = mt5Status === 'connected' && mt5CandlesForPair && mt5CandlesForPair.length > 0;
+  // Detect crypto vs forex mode
+  const isCryptoPair = (CRYPTO_PAIRS as readonly string[]).includes(selectedPair);
 
-  const pairData = isLive
-    ? { candles: mt5CandlesForPair, displayName: demoPair.displayName, pipSize: demoPair.pipSize }
-    : demoPair;
+  // Resolve candles: crypto → Binance/demo, forex → MT5/demo
+  const pairData = useMemo(() => {
+    if (isCryptoPair) {
+      const cryptoLive = cryptoCandles[selectedPair];
+      const demo = DEMO_CRYPTO[selectedPair] ?? { candles: DEMO_PAIRS.EURUSD.candles, displayName: selectedPair, pipSize: 0.01 };
+      if ((cryptoStatus === 'connected' || cryptoStatus === 'public') && cryptoLive?.length > 0) {
+        return { candles: cryptoLive, displayName: demo.displayName, pipSize: demo.pipSize };
+      }
+      return demo;
+    }
+    const demoPair = DEMO_PAIRS[selectedPair] ?? DEMO_PAIRS.EURUSD;
+    const mt5CandlesForPair = liveCandles[selectedPair];
+    const isLive = mt5Status === 'connected' && mt5CandlesForPair && mt5CandlesForPair.length > 0;
+    return isLive
+      ? { candles: mt5CandlesForPair, displayName: demoPair.displayName, pipSize: demoPair.pipSize }
+      : demoPair;
+  }, [isCryptoPair, selectedPair, cryptoCandles, cryptoStatus, liveCandles, mt5Status]);
   const lastPrice = pairData.candles[pairData.candles.length - 1]?.close ?? 0;
 
   // Graph engine: evaluate weighted signals through the node graph
@@ -130,7 +144,7 @@ export function PreviewPanel() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="text-[10px] text-emerald-400">Online</span>
-            {isLive && (
+            {(mt5Status === 'connected' || cryptoStatus === 'connected' || cryptoStatus === 'public') && (
               <span className="ml-1 px-1.5 py-0.5 rounded bg-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase">
                 Live
               </span>
