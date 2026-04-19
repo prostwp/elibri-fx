@@ -137,8 +137,56 @@ export async function listMLModels(): Promise<{
     horizon: number; accuracy: number; sharpe: number; f1: number;
     n_folds: number; trained_at: string; n_features: number; n_trees: number;
   }[];
+  thresholds?: {
+    symbol: string; interval: string; key: string;
+    threshold_high: number; threshold_low: number;
+    precision: number; n_signals: number; fraction: number;
+  }[];
 } | null> {
   return backendFetch(`/ml/models`);
+}
+
+export interface BacktestStrategyRow {
+  symbol: string;
+  interval: string;
+  n_trades: number;
+  win_rate: number;
+  total_return_pct: number;
+  max_drawdown_pct: number;
+  sharpe: number;
+  profit_factor: number;
+}
+
+export async function fetchBacktestSummary(): Promise<{
+  total_strategies?: number;
+  avg_total_return_pct?: number;
+  avg_win_rate?: number;
+  avg_sharpe?: number;
+  best?: [string, string, number];
+  worst?: [string, string, number];
+  results?: BacktestStrategyRow[];
+  error?: string;
+} | null> {
+  return backendFetch(`/ml/backtest`);
+}
+
+export async function fetchPaperTrades(): Promise<{
+  started_at?: string;
+  lookback_days?: number;
+  n_strategies?: number;
+  total_initial_equity?: number;
+  total_final_equity?: number;
+  total_return_pct?: number;
+  n_trades_total?: number;
+  win_rate_overall?: number;
+  per_strategy?: any[];
+  error?: string;
+} | null> {
+  return backendFetch(`/ml/paper-trades`);
+}
+
+export async function reloadMLModels(): Promise<{ loaded: number } | null> {
+  return backendFetch(`/ml/reload`, { method: 'POST' });
 }
 
 // ─── Fundamental News ───────────────────────────

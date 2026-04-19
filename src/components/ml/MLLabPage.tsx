@@ -4,7 +4,12 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { listMLModels } from '../../lib/backendClient';
+import {
+  listMLModels,
+  fetchBacktestSummary,
+  fetchPaperTrades,
+  reloadMLModels,
+} from '../../lib/backendClient';
 import { ArrowLeft } from 'lucide-react';
 
 interface ModelInfo {
@@ -37,19 +42,35 @@ export function MLLabPage() {
   const [thresholds, setThresholds] = useState<ThresholdInfo[]>([]);
   const [loadedAt, setLoadedAt] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [backtest, setBacktest] = useState<any>(null);
+  const [paperTrades, setPaperTrades] = useState<any>(null);
+  const [reloading, setReloading] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const r = await listMLModels();
-      if (r) {
-        setModels(r.models as ModelInfo[]);
-        setThresholds((r as any).thresholds ?? []);
-        setLoadedAt(r.health?.loaded_at ?? '');
-      }
-      setLoading(false);
-    })();
-  }, []);
+  const refresh = async () => {
+    setLoading(true);
+    const [m, b, p] = await Promise.all([
+      listMLModels(),
+      fetchBacktestSummary(),
+      fetchPaperTrades(),
+    ]);
+    if (m) {
+      setModels(m.models as ModelInfo[]);
+      setThresholds((m as any).thresholds ?? []);
+      setLoadedAt(m.health?.loaded_at ?? '');
+    }
+    setBacktest(b);
+    setPaperTrades(p);
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleReload = async () => {
+    setReloading(true);
+    await reloadMLModels();
+    await refresh();
+    setReloading(false);
+  };
 
   const avgAcc = models.length ? models.reduce((s, m) => s + m.accuracy, 0) / models.length : 0;
   const avgSharpe = models.length ? models.reduce((s, m) => s + m.sharpe, 0) / models.length : 0;
@@ -69,8 +90,12 @@ export function MLLabPage() {
             </span>
           </div>
           <div className="flex gap-2">
-            <button className="text-[11px] px-3 py-1 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30">
-              Reload models
+            <button
+              onClick={handleReload}
+              disabled={reloading}
+              className="text-[11px] px-3 py-1 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 disabled:opacity-50"
+            >
+              {reloading ? 'Reloading…' : 'Reload models'}
             </button>
           </div>
         </header>
@@ -147,22 +172,107 @@ export function MLLabPage() {
           </table>
         </section>
 
-        {/* Backtest & paper-trading placeholders */}
-        <section className="grid grid-cols-2 gap-3">
-          <div className="bg-[#0d0d14] border border-white/5 rounded-lg p-3">
-            <h2 className="text-sm font-semibold mb-2">Backtest</h2>
-            <p className="text-[11px] text-gray-500">
-              Walk-forward OOS simulation with ATR-based SL/TP and per-regime metrics.
-              Results available after first <code>backtest.py</code> run on top-5 × 3 TFs.
-            </p>
+        {/* Backtest */}
+        <section className="bg-[#0d0d14] border border-white/5 rounded-lg overflow-hidden">
+          <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Backtest (Out-of-Sample, walk-forward)</h2>
+            <span className="text-[10px] text-gray-500">ATR-based SL/TP · 5% risk per trade</span>
           </div>
-          <div className="bg-[#0d0d14] border border-white/5 rounded-lg p-3">
-            <h2 className="text-sm font-semibold mb-2">Paper Trading</h2>
-            <p className="text-[11px] text-gray-500">
-              Virtual $10k per strategy × 5 pairs × 2 TFs on last 90 days.
-              Refreshed after every <code>paper_trade.py</code> run.
-            </p>
+          {!backtest || (backtest as any)?.error ? (
+            <div className="p-3 text-[11px] text-gray-500">
+              {(backtest as any)?.error || 'No backtest data yet. Run `backtest.py` after training.'}
+            </div>
+          ) : (
+            <>
+              <div className="px-4 py-2 bg-white/3 grid grid-cols-4 gap-3 text-[11px]">
+                <div><span className="text-gray-500">Strategies:</span> <span className="text-white font-mono">{backtest.total_strategies}</span></div>
+                <div>
+                  <span className="text-gray-500">Avg Return:</span>{' '}
+                  <span className={`font-mono font-semibold ${(backtest.avg_total_return_pct ?? 0) > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {(backtest.avg_total_return_pct ?? 0) >= 0 ? '+' : ''}{(backtest.avg_total_return_pct ?? 0).toFixed(1)}%
+                  </span>
+                </div>
+                <div><span className="text-gray-500">Avg Win Rate:</span> <span className="font-mono">{((backtest.avg_win_rate ?? 0) * 100).toFixed(1)}%</span></div>
+                <div>
+                  <span className="text-gray-500">Avg Sharpe:</span>{' '}
+                  <span className={`font-mono ${(backtest.avg_sharpe ?? 0) > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {(backtest.avg_sharpe ?? 0) >= 0 ? '+' : ''}{(backtest.avg_sharpe ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="bg-white/3 text-gray-400">
+                  <tr>
+                    <th className="px-3 py-1.5 text-left">Symbol</th>
+                    <th className="px-3 py-1.5 text-left">TF</th>
+                    <th className="px-3 py-1.5 text-right">Trades</th>
+                    <th className="px-3 py-1.5 text-right">Win Rate</th>
+                    <th className="px-3 py-1.5 text-right">Return</th>
+                    <th className="px-3 py-1.5 text-right">Max DD</th>
+                    <th className="px-3 py-1.5 text-right">Sharpe</th>
+                    <th className="px-3 py-1.5 text-right">Profit Factor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(backtest.results ?? []).map((r: any, i: number) => (
+                    <tr key={i} className="border-t border-white/3 hover:bg-white/3">
+                      <td className="px-3 py-1.5 font-mono">{r.symbol}</td>
+                      <td className="px-3 py-1.5 font-mono">{r.interval}</td>
+                      <td className="px-3 py-1.5 text-right">{r.n_trades}</td>
+                      <td className="px-3 py-1.5 text-right font-mono">{(r.win_rate * 100).toFixed(1)}%</td>
+                      <td className={`px-3 py-1.5 text-right font-mono ${r.total_return_pct > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {r.total_return_pct >= 0 ? '+' : ''}{r.total_return_pct.toFixed(1)}%
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-red-400/70">
+                        -{r.max_drawdown_pct.toFixed(1)}%
+                      </td>
+                      <td className={`px-3 py-1.5 text-right font-mono ${r.sharpe > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {r.sharpe >= 0 ? '+' : ''}{r.sharpe.toFixed(2)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono">{r.profit_factor.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </section>
+
+        {/* Paper Trading */}
+        <section className="bg-[#0d0d14] border border-white/5 rounded-lg overflow-hidden">
+          <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Paper Trading (last {paperTrades?.lookback_days ?? 90}d)</h2>
+            <span className="text-[10px] text-gray-500">Virtual portfolio simulation</span>
           </div>
+          {!paperTrades || (paperTrades as any)?.error ? (
+            <div className="p-3 text-[11px] text-gray-500">
+              {(paperTrades as any)?.error || 'No paper-trading data yet. Run `paper_trade.py`.'}
+            </div>
+          ) : (
+            <div className="px-4 py-3 grid grid-cols-4 gap-3 text-[11px]">
+              <div>
+                <div className="text-gray-500 text-[10px]">Total Equity</div>
+                <div className="font-mono text-lg">
+                  ${(paperTrades.total_final_equity ?? 0).toFixed(0)}
+                  <span className="text-[10px] text-gray-500"> / ${(paperTrades.total_initial_equity ?? 0).toFixed(0)}</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-[10px]">Total Return</div>
+                <div className={`font-mono text-lg ${(paperTrades.total_return_pct ?? 0) > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {(paperTrades.total_return_pct ?? 0) >= 0 ? '+' : ''}{(paperTrades.total_return_pct ?? 0).toFixed(2)}%
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-[10px]">Trades</div>
+                <div className="font-mono text-lg">{paperTrades.n_trades_total}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-[10px]">Win Rate</div>
+                <div className="font-mono text-lg">{((paperTrades.win_rate_overall ?? 0) * 100).toFixed(1)}%</div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </div>
