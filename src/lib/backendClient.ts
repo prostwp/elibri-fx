@@ -130,6 +130,34 @@ export async function predictMLv2(
   });
 }
 
+export interface MLPredictMultiResponse {
+  symbol: string;
+  primary_interval: string;
+  predictions: Record<string, MLPredictionV2 | null>;
+  consensus: {
+    direction: 'buy' | 'sell' | 'neutral' | 'mixed';
+    alignment: number;        // 0..1
+    high_quality: boolean;    // true = all intervals agree + HC
+    avg_confidence: number;
+  };
+}
+
+export async function predictMLv2Multi(
+  symbol: string,
+  intervals: string[] = ['1h', '4h', '1d'],
+  tradingStyle: 'scalp' | 'day' | 'swing' | 'position' = 'swing',
+): Promise<MLPredictMultiResponse | null> {
+  return backendFetch<MLPredictMultiResponse>(`/ml/predict/multi`, {
+    method: 'POST',
+    body: JSON.stringify({
+      symbol,
+      intervals,
+      trading_style: tradingStyle,
+      source: 'binance',
+    }),
+  });
+}
+
 export async function listMLModels(): Promise<{
   health: { loaded_at: string; n_models: number; models: string[] };
   models: {

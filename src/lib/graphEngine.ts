@@ -24,12 +24,31 @@ export interface NodeSignal {
   indicators?: IndicatorResult[];
 }
 
+// Full trade setup from Risk Manager — rendered on Dashboard / PreviewPanel.
+export interface TradeSetup {
+  direction: 'buy' | 'sell' | 'hold';
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;
+  atr: number;
+  positionSize: number;   // units of base asset (e.g. BTC count)
+  positionValue: number;  // $ value of position
+  riskDollars: number;    // $ at risk if SL hits
+  rewardDollars: number;  // $ gained if TP hits
+  riskRewardRatio: number; // reward / risk
+  equity: number;
+  riskPct: number;        // % of equity at risk
+  hasConflict: boolean;
+  confidence: number;     // 0..100
+}
+
 export interface GraphResult {
   signals: NodeSignal[];
   finalScore: number;   // -1..+1 взвешенный
   direction: 'buy' | 'sell' | 'neutral';
   confidence: number;   // 0..100
   totalWeight: number;
+  tradeSetup?: TradeSetup;  // Computed when Risk Manager is in graph
 }
 
 /**
@@ -872,11 +891,136 @@ export function evaluateGraph(
     10
   ));
 
+  // ── Compute trade setup from Risk Manager parameters ──────
+  const tradeSetup = buildTradeSetup(
+    nodes,
+    edges,
+    signalMap,
+    candles,
+    finalScore,
+    confidence,
+  );
+
   return {
     signals: allSignals,
     finalScore: Math.round(finalScore * 1000) / 1000,
     direction: finalScore > 0.1 ? 'buy' : finalScore < -0.1 ? 'sell' : 'neutral',
     confidence,
     totalWeight,
+    tradeSetup,
   };
+}
+
+/**
+ * Build TradeSetup from Risk Manager node params + candles ATR.
+ * Returns undefined if no Risk Manager in graph.
+ */
+function buildTradeSetup(
+  nodes: Node[],
+  edges: Edge[],
+  signalMap: Map<string, NodeSignal>,
+  candles: OHLCVCandle[],
+  finalScore: number,
+  confidence: number,
+): TradeSetup | undefined {
+  const rm = nodes.find(n => n.type === 'riskManager');
+  if (!rm || candles.length < 15) return undefined;
+
+  // Params from the node (user-editable).
+  const equity = (rm.data.equity as number) ?? 10000;
+  const riskPct = (rm.data.maxRiskPct as number) ?? 1.0;
+  const slMult = (rm.data.slAtrMult as number) ?? 1.5;
+  const tpMult = (rm.data.tpAtrMult as number) ?? 2.5;
+
+  // Check conflict among Risk Manager incoming signals.
+  const rmIncoming = edges
+    .filter(e => e.target === rm.id)
+    .map(e => signalMap.get(e.source))
+    .filter((s): s is NodeSignal => !!s);
+  let hasConflict =
+    rmIncoming.some(s => s.signal > 0.1) && rmIncoming.some(s => s.signal < -0.1);
+
+  // MTF gate: if CryptoML node carries mtfConsensus.direction='mixed',
+  // treat it as a conflict too — higher/lower TF disagree, no clean trade.
+  const cmlNode = nodes.find(n => n.type === 'cryptoML');
+  const mtf = cmlNode?.data?.mtfConsensus as { direction?: string; alignment?: number } | undefined;
+  if (mtf?.direction === 'mixed') {
+    hasConflict = true;
+  }
+
+  // Compute ATR.
+  const atr = calcATR14(candles);
+  const entry = candles[candles.length - 1].close;
+
+  // Direction from final score.
+  let direction: 'buy' | 'sell' | 'hold' = 'hold';
+  if (finalScore > 0.1) direction = 'buy';
+  else if (finalScore < -0.1) direction = 'sell';
+
+  // SL/TP based on direction.
+  let stopLoss = entry;
+  let takeProfit = entry;
+  if (direction === 'buy') {
+    stopLoss = entry - slMult * atr;
+    takeProfit = entry + tpMult * atr;
+  } else if (direction === 'sell') {
+    stopLoss = entry + slMult * atr;
+    takeProfit = entry - tpMult * atr;
+  }
+
+  // Position sizing: risk $ = equity × riskPct / 100. Size = riskDollars / SL distance.
+  const riskDollars = (equity * riskPct) / 100;
+  const slDistance = Math.abs(entry - stopLoss);
+  let positionSize = 0;
+  let positionValue = 0;
+  let rewardDollars = 0;
+  let riskRewardRatio = 0;
+
+  if (slDistance > 0 && direction !== 'hold') {
+    positionSize = riskDollars / slDistance; // e.g. BTC count
+    positionValue = positionSize * entry;    // $ value
+    rewardDollars = positionSize * Math.abs(takeProfit - entry);
+    riskRewardRatio = rewardDollars / riskDollars;
+  }
+
+  // If conflict, shrink size by 50% (mirrors old RiskManager dampening).
+  if (hasConflict && direction !== 'hold') {
+    positionSize *= 0.5;
+    positionValue *= 0.5;
+    rewardDollars *= 0.5;
+  }
+
+  return {
+    direction,
+    entry,
+    stopLoss,
+    takeProfit,
+    atr,
+    positionSize,
+    positionValue,
+    riskDollars,
+    rewardDollars,
+    riskRewardRatio,
+    equity,
+    riskPct,
+    hasConflict,
+    confidence,
+  };
+}
+
+/**
+ * ATR(14) — simple implementation inline for graph-engine use.
+ */
+function calcATR14(candles: OHLCVCandle[]): number {
+  const period = 14;
+  if (candles.length < period + 1) return 0;
+  let sum = 0;
+  for (let i = candles.length - period; i < candles.length; i++) {
+    const h = candles[i].high;
+    const l = candles[i].low;
+    const pc = candles[i - 1].close;
+    const tr = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+    sum += tr;
+  }
+  return sum / period;
 }

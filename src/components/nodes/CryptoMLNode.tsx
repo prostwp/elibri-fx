@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BaseNode } from './BaseNode';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useCryptoStore } from '../../stores/useCryptoStore';
-import { predictMLv2, type MLPredictionV2 } from '../../lib/backendClient';
+import { predictMLv2, predictMLv2Multi, type MLPredictionV2, type MLPredictMultiResponse } from '../../lib/backendClient';
 import type { NodeProps } from '@xyflow/react';
 
 const SHORT_FEATURE_LABEL: Record<string, string> = {
@@ -84,23 +84,44 @@ export function CryptoMLNode({ id, data }: NodeProps) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<MLPredictionV2 | null>(null);
+  const [mtf, setMtf] = useState<MLPredictMultiResponse | null>(null);
 
   const run = async () => {
     setLoading(true);
     setErr(null);
     try {
-      const r = await predictMLv2(pair, interval, tradingStyle);
-      if (!r) throw new Error('empty response');
-      setResult(r);
-      // Legacy-compat: mirror to useCryptoStore so MLPredictorNode (if any) still sees it.
-      setMLPrediction(pair, {
-        direction: r.direction,
-        confidence: Math.round(r.confidence),
-        priceTarget: r.price_target,
-        timeframe: r.timeframe,
-        features: r.features ?? {},
-      });
-      updateNodeData(id, { lastPredictedAt: r.predicted_at });
+      // Multi-timeframe analysis: query 1h + 4h + 1d simultaneously so
+      // trader sees if lower-TF signal aligns with higher-TF trend.
+      const multi = await predictMLv2Multi(pair, ['1h', '4h', '1d'], tradingStyle);
+      if (multi) {
+        setMtf(multi);
+        // Primary prediction = the interval user selected (from CryptoTechnical).
+        const primary = multi.predictions[interval] ?? multi.predictions[multi.primary_interval];
+        if (primary) {
+          setResult(primary);
+          setMLPrediction(pair, {
+            direction: primary.direction,
+            confidence: Math.round(primary.confidence),
+            priceTarget: primary.price_target,
+            timeframe: primary.timeframe,
+            features: primary.features ?? {},
+          });
+          updateNodeData(id, { lastPredictedAt: primary.predicted_at, mtfConsensus: multi.consensus });
+        }
+      } else {
+        // Fallback: single-TF.
+        const r = await predictMLv2(pair, interval, tradingStyle);
+        if (!r) throw new Error('empty response');
+        setResult(r);
+        setMLPrediction(pair, {
+          direction: r.direction,
+          confidence: Math.round(r.confidence),
+          priceTarget: r.price_target,
+          timeframe: r.timeframe,
+          features: r.features ?? {},
+        });
+        updateNodeData(id, { lastPredictedAt: r.predicted_at });
+      }
     } catch (e: any) {
       setErr(String(e?.message ?? e));
     } finally {
@@ -172,6 +193,56 @@ export function CryptoMLNode({ id, data }: NodeProps) {
               Target: <span className="text-white/70">${result.price_target.toFixed(2)}</span>
             </span>
             <span className="text-gray-500">{result.horizon_bars} bars</span>
+          </div>
+        )}
+
+        {/* Multi-TimeFrame consensus */}
+        {mtf && Object.keys(mtf.predictions).length > 1 && (
+          <div className="border-t border-white/5 pt-1.5 space-y-0.5">
+            <div className="flex items-center justify-between text-[8px]">
+              <span className="text-gray-500 uppercase">Multi-TF</span>
+              <span className={`font-bold px-1.5 py-0 rounded ${
+                mtf.consensus.high_quality ? 'bg-emerald-500/20 text-emerald-300' :
+                mtf.consensus.direction === 'mixed' ? 'bg-amber-500/15 text-amber-300' :
+                'bg-white/5 text-gray-400'
+              }`}>
+                {mtf.consensus.direction.toUpperCase()} · {Math.round(mtf.consensus.alignment * 100)}%
+              </span>
+            </div>
+            {(['1h', '4h', '1d'] as const).map(iv => {
+              const p = mtf.predictions[iv];
+              if (!p) return (
+                <div key={iv} className="flex items-center justify-between text-[9px]">
+                  <span className="text-gray-600 font-mono">{iv}</span>
+                  <span className="text-gray-600">—</span>
+                </div>
+              );
+              const tone = p.direction === 'buy' ? 'text-emerald-400'
+                : p.direction === 'sell' ? 'text-red-400' : 'text-gray-400';
+              const icon = p.direction === 'buy' ? '▲' : p.direction === 'sell' ? '▼' : '—';
+              return (
+                <div key={iv} className="flex items-center justify-between text-[9px]">
+                  <span className="text-gray-500 font-mono">{iv}</span>
+                  <span className="flex items-center gap-1">
+                    <span className={tone}>{icon} {p.direction}</span>
+                    <span className="text-gray-500">{Math.round(p.confidence)}%</span>
+                    {p.metrics.high_confidence && (
+                      <span className="text-emerald-400" title="High-confidence">⚡</span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+            {mtf.consensus.high_quality && (
+              <div className="text-[8px] text-emerald-300 text-center bg-emerald-500/10 rounded px-1.5 py-0.5 mt-1">
+                ⚡ MTF ALIGNED · все ТФ согласны
+              </div>
+            )}
+            {mtf.consensus.direction === 'mixed' && (
+              <div className="text-[8px] text-amber-300 text-center bg-amber-500/10 rounded px-1.5 py-0.5 mt-1">
+                ⚠ ТФ противоречат · не торговать
+              </div>
+            )}
           </div>
         )}
 

@@ -254,6 +254,95 @@ export function PreviewPanel() {
         </div>
       )}
 
+      {/* Risk Manager Trade Setup — computed position sizing */}
+      {hasNodes && graphResult.tradeSetup && (
+        <div className="px-4 py-3 border-b border-white/5 bg-purple-500/[0.03]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] text-purple-400 uppercase tracking-wider font-semibold">
+              🛡 Trade Setup
+            </span>
+            {graphResult.tradeSetup.hasConflict && (
+              <span className="text-[9px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                ⚠ conflict · size ×0.5
+              </span>
+            )}
+          </div>
+
+          {/* Position line */}
+          <div className="flex items-baseline justify-between mb-2">
+            <div className="flex items-baseline gap-2">
+              <span className={`text-base font-bold ${
+                graphResult.tradeSetup.direction === 'buy' ? 'text-emerald-400' :
+                graphResult.tradeSetup.direction === 'sell' ? 'text-red-400' :
+                'text-gray-400'
+              }`}>
+                {graphResult.tradeSetup.direction === 'buy' ? '▲ LONG' :
+                 graphResult.tradeSetup.direction === 'sell' ? '▼ SHORT' :
+                 '— HOLD'}
+              </span>
+              {graphResult.tradeSetup.direction !== 'hold' ? (
+                <span className="text-sm font-mono text-white/90">
+                  {graphResult.tradeSetup.positionSize < 1
+                    ? graphResult.tradeSetup.positionSize.toFixed(4)
+                    : graphResult.tradeSetup.positionSize.toFixed(2)}
+                  <span className="text-[10px] text-gray-500 ml-1">units</span>
+                </span>
+              ) : (
+                <span className="text-[10px] text-gray-500">не торговать</span>
+              )}
+            </div>
+            {graphResult.tradeSetup.direction !== 'hold' && (
+              <span className="text-[10px] text-gray-500 font-mono">
+                ≈ ${graphResult.tradeSetup.positionValue.toFixed(0)}
+              </span>
+            )}
+          </div>
+
+          {/* Entry / SL / TP grid */}
+          <div className="grid grid-cols-3 gap-1.5 text-[10px] mb-2">
+            <div className="bg-white/[0.03] rounded px-1.5 py-1">
+              <div className="text-gray-500 text-[8px] uppercase">Entry</div>
+              <div className="text-indigo-400 font-mono">${graphResult.tradeSetup.entry.toFixed(2)}</div>
+            </div>
+            <div className="bg-white/[0.03] rounded px-1.5 py-1">
+              <div className="text-gray-500 text-[8px] uppercase">Stop</div>
+              <div className="text-red-400 font-mono">${graphResult.tradeSetup.stopLoss.toFixed(2)}</div>
+            </div>
+            <div className="bg-white/[0.03] rounded px-1.5 py-1">
+              <div className="text-gray-500 text-[8px] uppercase">Target</div>
+              <div className="text-emerald-400 font-mono">${graphResult.tradeSetup.takeProfit.toFixed(2)}</div>
+            </div>
+          </div>
+
+          {/* Risk / Reward / R:R */}
+          <div className="flex items-center justify-between text-[10px]">
+            <div>
+              <span className="text-gray-500">Risk </span>
+              <span className="text-red-400 font-mono">-${graphResult.tradeSetup.riskDollars.toFixed(0)}</span>
+              <span className="text-gray-600 text-[8px]"> ({graphResult.tradeSetup.riskPct.toFixed(1)}%)</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Reward </span>
+              <span className="text-emerald-400 font-mono">+${graphResult.tradeSetup.rewardDollars.toFixed(0)}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">R:R </span>
+              <span className={`font-mono font-semibold ${
+                graphResult.tradeSetup.riskRewardRatio >= 2 ? 'text-emerald-400' :
+                graphResult.tradeSetup.riskRewardRatio >= 1 ? 'text-amber-400' : 'text-red-400'
+              }`}>
+                1:{graphResult.tradeSetup.riskRewardRatio.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* ATR context */}
+          <div className="text-[9px] text-gray-600 mt-1.5 font-mono">
+            ATR ${graphResult.tradeSetup.atr.toFixed(2)} · equity ${graphResult.tradeSetup.equity.toLocaleString()}
+          </div>
+        </div>
+      )}
+
       {/* Graph Warnings */}
       {warnings.length > 0 && hasNodes && (
         <div className="px-4 py-2 border-b border-white/5 space-y-1">
