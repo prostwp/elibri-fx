@@ -234,6 +234,15 @@ export function Toolbar() {
         </button>
 
         <div className="w-px h-5 bg-white/10 mx-1" />
+        <a
+          href="#/ml-lab"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-white/[0.03] hover:bg-purple-500/10 border border-white/5 hover:border-purple-500/20 transition-all text-[10px] text-gray-300 hover:text-purple-300 h-9"
+          title="View trained models, backtest, paper trading"
+        >
+          <span>🧠</span>
+          <span>ML Lab</span>
+        </a>
+
         <button
           onClick={clear}
           className="px-3 py-2 rounded-md bg-white/[0.03] hover:bg-red-500/10 border border-white/5 hover:border-red-500/20 transition-all text-[10px] text-gray-500 hover:text-red-400 h-9"
