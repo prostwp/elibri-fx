@@ -1,14 +1,22 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { SegmentMode } from '../types/nodes';
 
+export type TemplateCategory = 'stocks' | 'crypto';
+
 interface Template {
   name: string;
   description: string;
   icon: string;
   segment: SegmentMode;
+  category: TemplateCategory;
   nodes: Node[];
   edges: Edge[];
 }
+
+export const TEMPLATE_CATEGORIES: { key: TemplateCategory; label: string; icon: string }[] = [
+  { key: 'stocks', label: 'Акции', icon: '📊' },
+  { key: 'crypto', label: 'Крипта', icon: '₿' },
+];
 
 const edgeStyle = { stroke: '#6366f1', strokeWidth: 2 };
 
@@ -112,6 +120,7 @@ export const TEMPLATES: Template[] = [
     description: 'Полный фундаментальный анализ акции для Т-Инвестиций',
     icon: '🏛️',
     segment: 'pro' as SegmentMode,
+    category: 'stocks' as TemplateCategory,
     nodes: [
       // Col 1: Stock Analyzer (source)
       { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 350 }, data: { ticker: 'SBER', weight: 0.8 } },
@@ -149,6 +158,7 @@ export const TEMPLATES: Template[] = [
     description: 'Отбор акций по дивидендной доходности',
     icon: '💎',
     segment: 'pro' as SegmentMode,
+    category: 'stocks' as TemplateCategory,
     nodes: [
       { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'LKOH', weight: 0.7 } },
       { id: 'dc1', type: 'dividendCapture', position: { x: 500, y: 0 }, data: { weight: 0.9 } },
@@ -174,6 +184,7 @@ export const TEMPLATES: Template[] = [
     description: 'Переоценка после отчётов и корп. событий',
     icon: '📰',
     segment: 'pro' as SegmentMode,
+    category: 'stocks' as TemplateCategory,
     nodes: [
       { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'SBER', weight: 0.7 } },
       { id: 'er1', type: 'eventRepricing', position: { x: 500, y: 0 }, data: { weight: 0.9 } },
@@ -198,56 +209,66 @@ export const TEMPLATES: Template[] = [
   // ─── Crypto Swing ──────────────────────────────
   {
     name: 'Crypto Swing',
-    description: 'Swing trading strategy for crypto with ML prediction',
+    description: 'Свинг крипта 2-14 дней: технический анализ 4h + ML прогноз + risk manager',
     icon: '₿',
     segment: 'pro' as SegmentMode,
+    category: 'crypto' as TemplateCategory,
     nodes: [
-      { id: 'cs1', type: 'cryptoSource', position: { x: 0, y: 250 }, data: { pair: 'BTCUSDT' } },
-      { id: 'ts1', type: 'tradingStyle', position: { x: 300, y: 0 }, data: { tradingStyle: 'swing', weight: 0.8 } },
-      { id: 'ti1', type: 'technicalIndicator', position: { x: 300, y: 250 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'EMA'], weight: 0.7 } },
-      { id: 'sc1', type: 'cryptoScanner', position: { x: 300, y: 530 }, data: { scanMode: ['volume_spike', 'rsi_dip'], weight: 0.6 } },
-      { id: 'ml1', type: 'mlPredictor', position: { x: 650, y: 120 }, data: { weight: 0.9 } },
-      { id: 'ta1', type: 'tradingAnalyst', position: { x: 650, y: 420 }, data: { weight: 0.7 } },
-      { id: 'db1', type: 'dashboard', position: { x: 1000, y: 280 }, data: {} },
+      { id: 'ca1', type: 'cryptoAsset', position: { x: 0, y: 420 }, data: { pair: 'BTCUSDT' } },
+      { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: -40 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'EMA'], interval: '4h', weight: 0.7 } },
+      { id: 'cm1', type: 'cryptoFundamental', position: { x: 380, y: 340 }, data: { categories: ['macro', 'geopolitics', 'regulation', 'crypto'], hours: 24, weight: 0.6 } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 380, y: 820 }, data: { tradingStyle: 'swing', weight: 0.8 } },
+      { id: 'ml1', type: 'cryptoML', position: { x: 860, y: 0 }, data: { weight: 0.8 } },
+      { id: 'ta1', type: 'tradingAnalyst', position: { x: 860, y: 420 }, data: { weight: 0.8 } },
+      { id: 'rm1', type: 'riskManager', position: { x: 860, y: 820 }, data: { weight: 0.7 } },
+      { id: 'db1', type: 'dashboard', position: { x: 1360, y: 420 }, data: {} },
     ],
     edges: [
-      { id: 'ce1', source: 'cs1', target: 'ts1', animated: true, style: edgeStyle },
-      { id: 'ce2', source: 'cs1', target: 'ti1', animated: true, style: edgeStyle },
-      { id: 'ce3', source: 'cs1', target: 'sc1', animated: true, style: edgeStyle },
-      { id: 'ce4', source: 'ts1', target: 'ml1', animated: true, style: edgeStyle },
-      { id: 'ce5', source: 'ti1', target: 'ml1', animated: true, style: edgeStyle },
-      { id: 'ce6', source: 'ti1', target: 'ta1', animated: true, style: edgeStyle },
-      { id: 'ce7', source: 'sc1', target: 'ta1', animated: true, style: edgeStyle },
-      { id: 'ce8', source: 'ml1', target: 'db1', animated: true, style: edgeStyle },
-      { id: 'ce9', source: 'ta1', target: 'db1', animated: true, style: edgeStyle },
+      // Asset → 3 analyses
+      { id: 'cs1', source: 'ca1', target: 'ct1', animated: true, style: edgeStyle },
+      { id: 'cs2', source: 'ca1', target: 'cm1', animated: true, style: edgeStyle },
+      { id: 'cs3', source: 'ca1', target: 'ts1', animated: true, style: edgeStyle },
+      // 3 analyses → ML (crypto ML uses all 3 as context)
+      { id: 'cs_ml1', source: 'ct1', target: 'ml1', animated: true, style: edgeStyle },
+      { id: 'cs_ml2', source: 'cm1', target: 'ml1', animated: true, style: edgeStyle },
+      { id: 'cs_ml3', source: 'ts1', target: 'ml1', animated: true, style: edgeStyle },
+      // 3 analyses → Trading Analyst
+      { id: 'cs4', source: 'ct1', target: 'ta1', animated: true, style: edgeStyle },
+      { id: 'cs5', source: 'cm1', target: 'ta1', animated: true, style: edgeStyle },
+      { id: 'cs6', source: 'ts1', target: 'ta1', animated: true, style: edgeStyle },
+      // Tech + News → Risk Manager
+      { id: 'cs7', source: 'ct1', target: 'rm1', animated: true, style: edgeStyle },
+      { id: 'cs8', source: 'cm1', target: 'rm1', animated: true, style: edgeStyle },
+      // ML + Analyst + Risk → Dashboard
+      { id: 'cs_ml_db', source: 'ml1', target: 'db1', animated: true, style: edgeStyle },
+      { id: 'cs9', source: 'ta1', target: 'db1', animated: true, style: edgeStyle },
+      { id: 'cs10', source: 'rm1', target: 'db1', animated: true, style: edgeStyle },
     ],
   },
 
-  // ─── Crypto Day Trade ──────────────────────────
+  // ─── Altcoin Sniper ───────────────────────────
   {
-    name: 'Crypto Day Trade',
-    description: 'Day trading crypto with on-chain metrics and ML',
-    icon: '⚡',
-    segment: 'pro' as SegmentMode,
+    name: 'Altcoin Sniper',
+    description: 'Find the next 10x — dips, ML prediction, top-5 altcoin scanner',
+    icon: '🎯',
+    segment: 'yolo' as SegmentMode,
+    category: 'crypto' as TemplateCategory,
     nodes: [
-      { id: 'cs1', type: 'cryptoSource', position: { x: 0, y: 250 }, data: { pair: 'ETHUSDT' } },
-      { id: 'ts1', type: 'tradingStyle', position: { x: 300, y: 0 }, data: { tradingStyle: 'daytrading', weight: 0.8 } },
-      { id: 'ti1', type: 'technicalIndicator', position: { x: 300, y: 250 }, data: { indicators: ['RSI', 'MACD', 'EMA'], weight: 0.7 } },
-      { id: 'oc1', type: 'onChainMetrics', position: { x: 300, y: 530 }, data: { metrics: ['whale_activity', 'exchange_inflow', 'exchange_outflow'], weight: 0.6 } },
-      { id: 'ml1', type: 'mlPredictor', position: { x: 650, y: 120 }, data: { weight: 0.9 } },
-      { id: 'rm1', type: 'riskManager', position: { x: 650, y: 420 }, data: { weight: 0.8 } },
-      { id: 'db1', type: 'dashboard', position: { x: 1000, y: 280 }, data: {} },
+      { id: 'ca1', type: 'cryptoAsset', position: { x: 0, y: 280 }, data: { pair: 'SOLUSDT' } },
+      { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: 0 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'ATR'], interval: '1h', weight: 0.6 } },
+      { id: 'cs1', type: 'cryptoScanner', position: { x: 380, y: 320 }, data: { scanMode: ['volume_spike', 'rsi_dip', 'price_dip'], thresholds: { volumeMultiplier: 2.5, rsiOversold: 30, dipPercent: 5 }, weight: 0.8 } },
+      { id: 'cm1', type: 'cryptoFundamental', position: { x: 760, y: 160 }, data: { categories: ['crypto', 'regulation', 'adoption'], hours: 24, weight: 0.7 } },
+      { id: 'rc1', type: 'riskCap', position: { x: 760, y: 480 }, data: { maxDailyLoss: 200, maxPositionSize: 0.2, maxTradesPerDay: 5, weight: 0.8 } },
+      { id: 'db1', type: 'dashboard', position: { x: 1140, y: 280 }, data: {} },
     ],
     edges: [
-      { id: 'de1', source: 'cs1', target: 'ts1', animated: true, style: edgeStyle },
-      { id: 'de2', source: 'cs1', target: 'ti1', animated: true, style: edgeStyle },
-      { id: 'de3', source: 'cs1', target: 'oc1', animated: true, style: edgeStyle },
-      { id: 'de4', source: 'ts1', target: 'ml1', animated: true, style: edgeStyle },
-      { id: 'de5', source: 'ti1', target: 'ml1', animated: true, style: edgeStyle },
-      { id: 'de6', source: 'ti1', target: 'rm1', animated: true, style: edgeStyle },
-      { id: 'de7', source: 'oc1', target: 'rm1', animated: true, style: edgeStyle },
-      { id: 'de8', source: 'ml1', target: 'db1', animated: true, style: edgeStyle },
-      { id: 'de9', source: 'rm1', target: 'db1', animated: true, style: edgeStyle },
+      { id: 'as1', source: 'ca1', target: 'ct1', animated: true, style: edgeStyle },
+      { id: 'as2', source: 'ca1', target: 'cs1', animated: true, style: edgeStyle },
+      { id: 'as3', source: 'ct1', target: 'cm1', animated: true, style: edgeStyle },
+      { id: 'as4', source: 'cs1', target: 'cm1', animated: true, style: edgeStyle },
+      { id: 'as5', source: 'cs1', target: 'rc1', animated: true, style: edgeStyle },
+      { id: 'as6', source: 'cm1', target: 'db1', animated: true, style: edgeStyle },
+      { id: 'as7', source: 'rc1', target: 'db1', animated: true, style: edgeStyle },
     ],
   },
 ];

@@ -1,31 +1,27 @@
 import { create } from 'zustand';
-import type { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { fetchMe, getToken, setToken, type AuthUser } from '../lib/authClient';
 
-interface Profile {
-  id: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  created_at: string;
-  updated_at: string;
+export interface Session {
+  access_token: string;
+  user: AuthUser;
 }
 
 interface AuthState {
-  user: User | null;
+  user: AuthUser | null;
   session: Session | null;
-  profile: Profile | null;
+  profile: AuthUser | null;
   loading: boolean;
   initialized: boolean;
 
   setSession: (session: Session | null) => void;
-  setProfile: (profile: Profile | null) => void;
+  setProfile: (profile: AuthUser | null) => void;
   setLoading: (loading: boolean) => void;
   setInitialized: (initialized: boolean) => void;
   fetchProfile: () => Promise<void>;
   reset: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   session: null,
   profile: null,
@@ -35,6 +31,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setSession: (session) => set({
     session,
     user: session?.user ?? null,
+    profile: session?.user ?? null,
   }),
 
   setProfile: (profile) => set({ profile }),
@@ -44,54 +41,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setInitialized: (initialized) => set({ initialized }),
 
   fetchProfile: async () => {
-    const { user } = get();
-    if (!user) {
+    const me = await fetchMe();
+    if (me) {
+      set({ profile: me, user: me });
+    } else {
       set({ profile: null });
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (!error && data) {
-      set({ profile: data as Profile });
     }
   },
 
-  reset: () => set({
-    user: null,
-    session: null,
-    profile: null,
-    loading: false,
-  }),
+  reset: () => {
+    setToken(null);
+    set({
+      user: null,
+      session: null,
+      profile: null,
+      loading: false,
+    });
+  },
 }));
 
-// Initialize auth listener
-export function initAuthListener() {
-  // Get initial session
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    useAuthStore.getState().setSession(session);
-    if (session) {
-      useAuthStore.getState().fetchProfile();
-    }
-    useAuthStore.getState().setLoading(false);
-    useAuthStore.getState().setInitialized(true);
-  });
+// Initialize: check localStorage for token, fetch /me.
+// Returns a cleanup function matching the old Supabase subscription shape.
+export function initAuthListener(): { unsubscribe: () => void } {
+  const token = getToken();
+  if (!token) {
+    useAuthStore.setState({ loading: false, initialized: true });
+    return { unsubscribe: () => {} };
+  }
 
-  // Listen for auth changes
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
-      useAuthStore.getState().setSession(session);
-      if (session) {
-        useAuthStore.getState().fetchProfile();
+  fetchMe()
+    .then(user => {
+      if (user) {
+        useAuthStore.getState().setSession({ access_token: token, user });
       } else {
+        // Token invalid — clear
+        setToken(null);
         useAuthStore.getState().reset();
       }
-    }
-  );
+    })
+    .catch(() => {
+      setToken(null);
+      useAuthStore.getState().reset();
+    })
+    .finally(() => {
+      useAuthStore.setState({ loading: false, initialized: true });
+    });
 
-  return subscription;
+  return { unsubscribe: () => {} };
 }

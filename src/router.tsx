@@ -1,9 +1,8 @@
 import { createHashRouter, Navigate } from 'react-router-dom';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
-import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
-import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { ProfilePage } from './components/auth/ProfilePage';
+import { AdminPage } from './components/auth/AdminPage';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { AppLayout } from './components/layout/AppLayout';
 
@@ -21,14 +20,6 @@ export const router = createHashRouter([
     element: <RegisterPage />,
   },
   {
-    path: '/forgot-password',
-    element: <ForgotPasswordPage />,
-  },
-  {
-    path: '/reset-password',
-    element: <ResetPasswordPage />,
-  },
-  {
     path: '/app',
     element: (
       <AuthGuard>
@@ -41,6 +32,14 @@ export const router = createHashRouter([
     element: (
       <AuthGuard>
         <ProfilePage />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: '/admin',
+    element: (
+      <AuthGuard>
+        <AdminPage />
       </AuthGuard>
     ),
   },

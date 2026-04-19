@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Calendar, LogOut, Save, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Mail, Calendar, LogOut, Save, ArrowLeft, AlertCircle, CheckCircle, Shield } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabase';
+import { updateMe } from '../../lib/authClient';
 
 export function ProfilePage() {
-  const { user, profile, fetchProfile } = useAuthStore();
+  const { user, profile, setProfile } = useAuthStore();
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -19,15 +19,11 @@ export function ProfilePage() {
     setSaving(true);
     setMessage(null);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ display_name: displayName, updated_at: new Date().toISOString() })
-      .eq('id', user.id);
-
-    if (error) {
+    const updated = await updateMe(displayName);
+    if (!updated) {
       setMessage({ type: 'error', text: 'Failed to save. Try again.' });
     } else {
-      await fetchProfile();
+      setProfile(updated);
       setMessage({ type: 'success', text: 'Profile updated!' });
     }
 
@@ -51,7 +47,6 @@ export function ProfilePage() {
   return (
     <div className="min-h-screen bg-[#0a0a0f] px-4 py-8">
       <div className="mx-auto max-w-lg">
-        {/* Back */}
         <button
           onClick={() => navigate('/app')}
           className="mb-6 flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition"
@@ -60,7 +55,6 @@ export function ProfilePage() {
           Back to Strategy Builder
         </button>
 
-        {/* Avatar + Name */}
         <div className="mb-6 flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xl font-bold text-white">
             {initials}
@@ -73,7 +67,6 @@ export function ProfilePage() {
           </div>
         </div>
 
-        {/* Edit Card */}
         <div className="rounded-2xl border border-slate-800 bg-[#0d0d14] p-6 mb-4">
           <h2 className="mb-4 text-sm font-semibold text-slate-300 uppercase tracking-wider">Profile Info</h2>
 
@@ -138,7 +131,21 @@ export function ProfilePage() {
           </div>
         </div>
 
-        {/* Sign Out */}
+        {profile?.role === 'admin' && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 mb-4">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-400 uppercase tracking-wider">
+              <Shield className="h-4 w-4" />
+              Admin Controls
+            </h2>
+            <button
+              onClick={() => navigate('/admin')}
+              className="flex items-center gap-2 rounded-lg bg-amber-500/20 px-4 py-2.5 text-sm font-medium text-amber-300 transition hover:bg-amber-500/30"
+            >
+              Open Admin Panel
+            </button>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-slate-800 bg-[#0d0d14] p-6">
           <h2 className="mb-4 text-sm font-semibold text-slate-300 uppercase tracking-wider">Account</h2>
           <button

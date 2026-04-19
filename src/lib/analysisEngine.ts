@@ -122,7 +122,7 @@ function calcWeightedTradeSetup(
 
     // BB refinement if technical indicators node exists
     const hasBB = nodes.some(n =>
-      n.type === 'technicalIndicator' &&
+      (n.type === 'technicalIndicator' || n.type === 'cryptoTechnical') &&
       ((n.data.indicators as string[]) ?? []).includes('Bollinger Bands')
     );
     if (hasBB) {
@@ -141,7 +141,7 @@ function calcWeightedTradeSetup(
     takeProfit = Math.max(tpFromATR, tpFromSupport);
 
     const hasBB = nodes.some(n =>
-      n.type === 'technicalIndicator' &&
+      (n.type === 'technicalIndicator' || n.type === 'cryptoTechnical') &&
       ((n.data.indicators as string[]) ?? []).includes('Bollinger Bands')
     );
     if (hasBB) {
@@ -181,7 +181,7 @@ function collectIndicators(graph: GraphResult): IndicatorResult[] {
 // ─── Build signal rows for table ────────────────
 function buildSignalRows(graph: GraphResult) {
   return graph.signals
-    .filter(s => s.nodeType !== 'marketPair' && s.nodeType !== 'chartSource' && s.nodeType !== 'cryptoSource')
+    .filter(s => s.nodeType !== 'marketPair' && s.nodeType !== 'chartSource' && s.nodeType !== 'cryptoSource' && s.nodeType !== 'cryptoAsset')
     .map(s => ({
       name: s.label || s.nodeType,
       direction: s.signal > 0.1 ? 'long' as const : s.signal < -0.1 ? 'short' as const : 'neutral' as const,
@@ -202,7 +202,11 @@ export function validateGraph(nodes: Node[], edges: Edge[]): GraphWarning[] {
 
   // Detect mode: fundamental (has stockAnalysis) vs crypto vs forex
   const isFundamental = nodes.some(n => n.type === 'stockAnalysis');
-  const isCrypto = nodes.some(n => n.type === 'cryptoSource');
+  const isCrypto = nodes.some(n =>
+    n.type === 'cryptoSource' || n.type === 'cryptoAsset' ||
+    n.type === 'cryptoTechnical' || n.type === 'cryptoScanner' ||
+    n.type === 'cryptoML' || n.type === 'mlPredictor' || n.type === 'onChainMetrics',
+  );
 
   if (isFundamental) {
     // Fundamental mode — check for stock-specific nodes
@@ -214,7 +218,9 @@ export function validateGraph(nodes: Node[], edges: Edge[]): GraphWarning[] {
     // Crypto mode
     const hasOutput = nodes.some(n => n.type === 'dashboard');
     const hasAnalysis = nodes.some(n =>
-      n.type === 'technicalIndicator' || n.type === 'cryptoScanner' || n.type === 'mlPredictor' || n.type === 'tradingAnalyst'
+      n.type === 'technicalIndicator' || n.type === 'cryptoTechnical' ||
+      n.type === 'cryptoScanner' || n.type === 'mlPredictor' || n.type === 'cryptoML' ||
+      n.type === 'tradingAnalyst'
     );
     if (!hasOutput) {
       warnings.push({ type: 'warning', message: 'Add a Dashboard node to see results' });

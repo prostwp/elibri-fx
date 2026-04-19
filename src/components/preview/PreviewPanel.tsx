@@ -20,19 +20,42 @@ import type { SegmentMode, BeginnerAnalysis, YOLOAnalysis, AIAnalysis } from '..
 export function PreviewPanel() {
   const { nodes, edges, selectedPair, segmentMode, setSegmentMode } = useFlowStore();
   const { status: mt5Status, candles: liveCandles, account } = useMT5Store();
-  const { status: cryptoStatus, candles: cryptoCandles } = useCryptoStore();
+  const { status: cryptoStatus, candles: cryptoCandles, mlPredictions, newsAggregate } = useCryptoStore();
   const [refreshKey, setRefreshKey] = useState(0);
   const onRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
-  // Detect crypto vs forex mode
-  const isCryptoPair = (CRYPTO_PAIRS as readonly string[]).includes(selectedPair);
+  // Detect crypto vs forex mode — any crypto node OR USDT suffix OR known crypto pair
+  const hasCryptoNode = nodes.some(n =>
+    n.type === 'cryptoSource' || n.type === 'cryptoAsset' ||
+    n.type === 'cryptoTechnical' || n.type === 'cryptoScanner' ||
+    n.type === 'cryptoML' || n.type === 'mlPredictor' || n.type === 'onChainMetrics',
+  );
+  const isCryptoPair = hasCryptoNode
+    || (CRYPTO_PAIRS as readonly string[]).includes(selectedPair)
+    || selectedPair.endsWith('USDT');
 
-  // Resolve candles: crypto → Binance/demo, forex → MT5/demo
+  // Effective pair for crypto mode: prefer selectedPair if it's crypto, else read from
+  // placed source node, else fallback to BTCUSDT
+  const effectivePair = useMemo(() => {
+    if (!isCryptoPair) return selectedPair;
+    if (selectedPair.endsWith('USDT') || (CRYPTO_PAIRS as readonly string[]).includes(selectedPair)) {
+      return selectedPair;
+    }
+    const sourceNode = nodes.find(n => n.type === 'cryptoAsset' || n.type === 'cryptoSource');
+    const p = sourceNode?.data?.pair as string | undefined;
+    return p ?? 'BTCUSDT';
+  }, [isCryptoPair, selectedPair, nodes]);
+
+  // Resolve candles: crypto → live store (from CryptoTechnicalNode fetch) / demo, forex → MT5 / demo
   const pairData = useMemo(() => {
     if (isCryptoPair) {
-      const cryptoLive = cryptoCandles[selectedPair];
-      const demo = DEMO_CRYPTO[selectedPair] ?? { candles: DEMO_PAIRS.EURUSD.candles, displayName: selectedPair, pipSize: 0.01 };
-      if ((cryptoStatus === 'connected' || cryptoStatus === 'public') && cryptoLive?.length > 0) {
+      const cryptoLive = cryptoCandles[effectivePair];
+      const demo = DEMO_CRYPTO[effectivePair] ?? {
+        candles: DEMO_CRYPTO.BTCUSDT?.candles ?? DEMO_PAIRS.EURUSD.candles,
+        displayName: effectivePair.replace('USDT', '/USDT'),
+        pipSize: 0.01,
+      };
+      if (cryptoLive && cryptoLive.length > 0) {
         return { candles: cryptoLive, displayName: demo.displayName, pipSize: demo.pipSize };
       }
       return demo;
@@ -43,17 +66,19 @@ export function PreviewPanel() {
     return isLive
       ? { candles: mt5CandlesForPair, displayName: demoPair.displayName, pipSize: demoPair.pipSize }
       : demoPair;
-  }, [isCryptoPair, selectedPair, cryptoCandles, cryptoStatus, liveCandles, mt5Status]);
+  }, [isCryptoPair, effectivePair, selectedPair, cryptoCandles, liveCandles, mt5Status]);
   const lastPrice = pairData.candles[pairData.candles.length - 1]?.close ?? 0;
 
-  // Graph engine: evaluate weighted signals through the node graph
+  // Graph engine: evaluate weighted signals through the node graph.
+  // mlPredictions and newsAggregate are read inside evaluateGraph via store.getState() —
+  // include them in deps so re-eval runs when fresh data arrives.
   const graphResult = useMemo(
     () => evaluateGraph(nodes, edges, pairData.candles),
-    [nodes, edges, pairData.candles]
+    [nodes, edges, pairData.candles, mlPredictions, newsAggregate]
   );
 
   const selectedIndicators = useMemo(() => {
-    const techNodes = nodes.filter(n => n.type === 'technicalIndicator');
+    const techNodes = nodes.filter(n => n.type === 'technicalIndicator' || n.type === 'cryptoTechnical');
     const indicators: string[] = [];
     techNodes.forEach(n => {
       const inds = (n.data.indicators as string[]) ?? [];

@@ -11,7 +11,7 @@ import {
 } from './indicators';
 import { detectPatterns } from './chartPatterns';
 import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison } from './stockData';
-import { calcVolumeSpike, calcPriceDip } from './cryptoIndicators';
+import { calcVolumeSpike, calcPriceDip, getCryptoIndicatorSignals } from './cryptoIndicators';
 import { useCryptoStore } from '../stores/useCryptoStore';
 
 // Сигнал ноды: числовое значение -1 (sell) .. 0 (neutral) .. +1 (buy)
@@ -462,9 +462,59 @@ export function evaluateGraph(
 
       // ─── Crypto nodes ──────────────────────────────
 
-      // Crypto Source — pass through, same as marketPair
-      case 'cryptoSource': {
+      // Crypto Source / Crypto Asset — pass through, same as marketPair
+      case 'cryptoSource':
+      case 'cryptoAsset': {
         signal = 0;
+        break;
+      }
+
+      // Crypto Technical — same computation as technicalIndicator but crypto-tailored
+      case 'cryptoTechnical': {
+        const selected = (node.data.indicators as string[]) ?? ['RSI', 'MACD', 'Bollinger Bands'];
+        indicators = getCryptoIndicatorSignals(candles, selected);
+        if (indicators.length > 0) {
+          signal = indicators.reduce((sum, ind) => sum + signalToNumber(ind.signal), 0) / indicators.length;
+        }
+        break;
+      }
+
+      // Crypto Fundamental — news aggregate sentiment from store
+      case 'cryptoFundamental': {
+        const cryptoStore = useCryptoStore.getState();
+        const pair = nodes.find(n => n.type === 'cryptoAsset')?.data?.pair as string
+          ?? nodes.find(n => n.type === 'cryptoSource')?.data?.pair as string
+          ?? 'BTCUSDT';
+        const news = cryptoStore.newsAggregate?.[pair];
+        if (news) {
+          // Recompute filtered sentiment using node's enabled categories
+          const enabledCats = (node.data.categories as string[]) ?? ['macro', 'geopolitics', 'regulation'];
+          const filtered = news.items.filter(it =>
+            enabledCats.includes(it.category) ||
+            (enabledCats.includes('crypto') && (it.source === 'coindesk' || it.source === 'cointelegraph')),
+          );
+          if (filtered.length > 0) {
+            const now = Date.now();
+            let weightedSum = 0;
+            let weightTotal = 0;
+            for (const it of filtered) {
+              const hoursOld = (now - new Date(it.published_at).getTime()) / 3600000;
+              const w = 1 / (1 + hoursOld / 6);
+              weightedSum += it.sentiment * w;
+              weightTotal += w;
+            }
+            signal = weightTotal > 0 ? weightedSum / weightTotal : 0;
+            signal = Math.max(-1, Math.min(1, signal));
+
+            const label = signal > 0.15 ? 'buy' : signal < -0.15 ? 'sell' : 'neutral';
+            indicators = [{
+              name: 'News Sentiment',
+              value: Math.round(signal * 100),
+              signal: label,
+              description: `${filtered.length} новостей · ${filtered.filter(f => f.sentiment > 0.15).length} bull / ${filtered.filter(f => f.sentiment < -0.15).length} bear`,
+            }];
+          }
+        }
         break;
       }
 
@@ -583,6 +633,49 @@ export function evaluateGraph(
           signal = totalW > 0
             ? incoming.reduce((s, i) => s + i.signal * i.weight, 0) / totalW
             : 0;
+        }
+        break;
+      }
+
+      // Crypto ML — V2 ensemble. Node itself calls backend /ml/predict v2;
+      // we read the last result from useCryptoStore and BLEND with incoming
+      // signals from 3 upstream nodes (CryptoTechnical / CryptoFundamental /
+      // TradingStyle). Model prob has 60% weight, upstream consensus 40%.
+      case 'cryptoML': {
+        const cryptoStore = useCryptoStore.getState();
+        const pair = nodes.find(n => n.type === 'cryptoAsset')?.data?.pair as string
+          ?? nodes.find(n => n.type === 'cryptoSource')?.data?.pair as string
+          ?? nodes.find(n => n.type === 'marketPair')?.data?.pair as string
+          ?? 'BTCUSDT';
+        const pred = cryptoStore.mlPredictions[pair];
+
+        // Upstream consensus.
+        let upstream = 0;
+        if (incoming.length > 0) {
+          const tw = incoming.reduce((s, i) => s + i.weight, 0);
+          upstream = tw > 0
+            ? incoming.reduce((s, i) => s + i.signal * i.weight, 0) / tw
+            : 0;
+        }
+
+        if (pred) {
+          const modelSignal = pred.direction === 'buy'
+            ? Math.min(1, pred.confidence / 100)
+            : pred.direction === 'sell'
+              ? -Math.min(1, pred.confidence / 100)
+              : 0;
+          // Blend: 0.6 model + 0.4 upstream consensus.
+          signal = 0.6 * modelSignal + 0.4 * upstream;
+          signal = Math.max(-1, Math.min(1, signal));
+          indicators = [{
+            name: 'ML Ensemble',
+            value: pred.confidence,
+            signal: pred.direction,
+            description: `${pred.direction.toUpperCase()} ${pred.confidence}% · blended with ${incoming.length} upstream`,
+          }];
+        } else if (incoming.length > 0) {
+          // No model yet → pass upstream through unchanged.
+          signal = upstream;
         }
         break;
       }
@@ -759,7 +852,7 @@ export function evaluateGraph(
     signalMap.set(nodeId, nodeSignal);
 
     // Only count signal-producing nodes (not source/pass-through)
-    if (type !== 'marketPair' && type !== 'chartSource' && type !== 'cryptoSource') {
+    if (type !== 'marketPair' && type !== 'chartSource' && type !== 'cryptoSource' && type !== 'cryptoAsset') {
       allSignals.push(nodeSignal);
     }
   }

@@ -17,7 +17,11 @@ export { DividendNode } from './DividendNode';
 export { EventRepricingNode } from './EventRepricingNode';
 export { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
 export { CryptoSourceNode } from './CryptoSourceNode';
+export { CryptoAssetNode } from './CryptoAssetNode';
 export { CryptoScannerNode } from './CryptoScannerNode';
+export { CryptoTechnicalNode } from './CryptoTechnicalNode';
+export { CryptoFundamentalNode } from './CryptoFundamentalNode';
+export { CryptoMLNode } from './CryptoMLNode';
 export { MLPredictorNode } from './MLPredictorNode';
 export { OnChainMetricsNode } from './OnChainMetricsNode';
 
@@ -42,7 +46,11 @@ import { DividendNode } from './DividendNode';
 import { EventRepricingNode } from './EventRepricingNode';
 import { ReportSelectorNode, CashFlowNode, DebtAnalysisNode, SectorCompareNode, ProfitabilityNode, PortfolioScoreNode } from './FundamentalNodes';
 import { CryptoSourceNode } from './CryptoSourceNode';
+import { CryptoAssetNode } from './CryptoAssetNode';
 import { CryptoScannerNode } from './CryptoScannerNode';
+import { CryptoTechnicalNode } from './CryptoTechnicalNode';
+import { CryptoFundamentalNode } from './CryptoFundamentalNode';
+import { CryptoMLNode } from './CryptoMLNode';
 import { MLPredictorNode } from './MLPredictorNode';
 import { OnChainMetricsNode } from './OnChainMetricsNode';
 
@@ -74,7 +82,11 @@ export const nodeTypes: Record<string, ComponentType<NodeProps>> = {
   dividendCapture: DividendNode as ComponentType<NodeProps>,
   eventRepricing: EventRepricingNode as ComponentType<NodeProps>,
   cryptoSource: CryptoSourceNode as ComponentType<NodeProps>,
+  cryptoAsset: CryptoAssetNode as ComponentType<NodeProps>,
   cryptoScanner: CryptoScannerNode as ComponentType<NodeProps>,
+  cryptoTechnical: CryptoTechnicalNode as ComponentType<NodeProps>,
+  cryptoFundamental: CryptoFundamentalNode as ComponentType<NodeProps>,
+  cryptoML: CryptoMLNode as ComponentType<NodeProps>,
   mlPredictor: MLPredictorNode as ComponentType<NodeProps>,
   onChainMetrics: OnChainMetricsNode as ComponentType<NodeProps>,
 };

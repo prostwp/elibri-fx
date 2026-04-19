@@ -6,7 +6,7 @@ import { useCryptoStore } from '../../stores/useCryptoStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useReactFlow } from '@xyflow/react';
-import { TEMPLATES } from '../../lib/templates';
+import { TEMPLATES, TEMPLATE_CATEGORIES, type TemplateCategory } from '../../lib/templates';
 import { StrategyListModal } from '../strategies/StrategyListModal';
 import { toast } from '../ui/Toast';
 
@@ -23,17 +23,25 @@ export function Toolbar() {
   const { fitView } = useReactFlow();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [openCategory, setOpenCategory] = useState<TemplateCategory | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const categoryRefs = useRef<Record<TemplateCategory, HTMLDivElement | null>>({ stocks: null, crypto: null });
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
+      if (openCategory) {
+        const refEl = categoryRefs.current[openCategory];
+        if (refEl && !refEl.contains(e.target as Node)) {
+          setOpenCategory(null);
+        }
+      }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  }, [openCategory]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -43,19 +51,21 @@ export function Toolbar() {
   const initials = (profile?.display_name ?? user?.email ?? 'U')
     .slice(0, 2).toUpperCase();
 
-  const loadTemplate = (index: number) => {
-    const template = TEMPLATES[index];
+  const loadTemplate = (templateName: string) => {
+    const template = TEMPLATES.find(t => t.name === templateName);
     if (!template) return;
     clear();
     setSegmentMode(template.segment);
-    const mpNode = template.nodes.find(n => n.type === 'marketPair' || n.type === 'cryptoSource');
+    const mpNode = template.nodes.find(n =>
+      n.type === 'marketPair' || n.type === 'cryptoSource' || n.type === 'cryptoAsset',
+    );
     if (mpNode?.data?.pair) {
       setSelectedPair(mpNode.data.pair as string);
     }
+    setOpenCategory(null);
     setTimeout(() => {
       setNodes(template.nodes);
       setEdges(template.edges);
-      // Auto fit view after nodes are placed
       setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100);
     }, 50);
   };
@@ -94,25 +104,77 @@ export function Toolbar() {
 
         <div className="w-px h-5 bg-white/10 mx-1" />
 
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mr-1">Templates:</span>
-        {TEMPLATES.map((t, i) => (
-          <button
-            key={i}
-            onClick={() => loadTemplate(i)}
-            className={`
-              flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all h-9
-              ${t.segment === 'beginner'
-                ? 'bg-emerald-500/5 hover:bg-emerald-500/15 border-emerald-500/10 hover:border-emerald-500/30'
-                : t.segment === 'yolo'
-                ? 'bg-red-500/5 hover:bg-red-500/15 border-red-500/10 hover:border-red-500/30'
-                : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/5 hover:border-white/15'
-              }
-            `}
-          >
-            <span className="text-sm">{t.icon}</span>
-            <span className="text-[10px] font-semibold text-gray-300 hover:text-white transition-colors whitespace-nowrap">{t.name}</span>
-          </button>
-        ))}
+        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mr-1">Шаблоны:</span>
+        {TEMPLATE_CATEGORIES.map(cat => {
+          const items = TEMPLATES.filter(t => t.category === cat.key);
+          const isOpen = openCategory === cat.key;
+          return (
+            <div
+              key={cat.key}
+              className="relative"
+              ref={(el) => { categoryRefs.current[cat.key] = el; }}
+            >
+              <button
+                onClick={() => setOpenCategory(isOpen ? null : cat.key)}
+                className={`
+                  flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all h-9
+                  ${isOpen
+                    ? 'bg-indigo-500/20 border-indigo-500/40'
+                    : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/5 hover:border-white/15'
+                  }
+                `}
+              >
+                <span className="text-sm">{cat.icon}</span>
+                <span className="text-[10px] font-semibold text-gray-300 hover:text-white transition-colors whitespace-nowrap">
+                  {cat.label}
+                </span>
+                <span className="text-[9px] text-gray-500 font-mono">{items.length}</span>
+                <svg
+                  className={`w-3 h-3 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isOpen && (
+                <div className="absolute top-11 left-0 z-50 w-64 rounded-xl border border-slate-700 bg-[#0d0d14] py-1 shadow-2xl">
+                  {items.length === 0 ? (
+                    <div className="px-3 py-2 text-[10px] text-gray-500">Нет шаблонов</div>
+                  ) : (
+                    items.map(t => (
+                      <button
+                        key={t.name}
+                        onClick={() => loadTemplate(t.name)}
+                        className={`
+                          w-full flex items-start gap-2 px-3 py-2 text-left transition-colors
+                          ${t.segment === 'beginner' ? 'hover:bg-emerald-500/10'
+                            : t.segment === 'yolo' ? 'hover:bg-red-500/10'
+                            : 'hover:bg-indigo-500/10'}
+                        `}
+                      >
+                        <span className="text-sm mt-0.5">{t.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-semibold text-white">{t.name}</span>
+                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded uppercase ${
+                              t.segment === 'beginner' ? 'bg-emerald-500/20 text-emerald-400'
+                              : t.segment === 'yolo' ? 'bg-red-500/20 text-red-400'
+                              : 'bg-slate-700/60 text-slate-300'
+                            }`}>
+                              {t.segment}
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">{t.description}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
         <div className="w-px h-5 bg-white/10 mx-1" />
 
         {/* MT5 Button */}

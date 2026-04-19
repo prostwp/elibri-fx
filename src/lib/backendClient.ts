@@ -69,10 +69,107 @@ export async function predictFromBackend(
   symbol: string,
   source: 'moex' | 'binance' = 'moex',
 ): Promise<{ prediction: any; features: any } | null> {
-  return backendFetch(`/ml/predict`, {
+  return backendFetch(`/ml/predict/legacy`, {
     method: 'POST',
     body: JSON.stringify({ symbol, source }),
   });
+}
+
+export interface MLPredictionV2 {
+  symbol: string;
+  interval: string;
+  direction: 'buy' | 'sell' | 'neutral';
+  confidence: number;            // 0-100
+  probability: number;           // 0-1 raw P(up)
+  price_target: number;
+  timeframe: string;
+  horizon_bars: number;
+  model_version: string;
+  predicted_at: number;
+  feature_importance: { name: string; importance: number }[];
+  similar_situations: {
+    date: string;
+    distance: number;
+    outcome_5: number;
+    outcome_10: number;
+    outcome_20: number;
+    description: string;
+  }[];
+  metrics: {
+    accuracy: number;
+    sharpe: number;
+    f1: number;
+    n_folds: number;
+    hc_precision: number;       // precision on high-confidence signals (>0.80 prob)
+    hc_signal_rate: number;     // fraction of bars that pass filter
+    hc_signals_total: number;
+    n_test_total: number;
+    avg_outcome_5: number;
+    avg_outcome_10: number;
+    avg_outcome_20: number;
+    high_confidence: boolean;   // true if THIS prediction passes the filter
+  };
+  features?: Record<string, number>;
+  fallback_reason?: string;
+}
+
+export async function predictMLv2(
+  symbol: string,
+  interval: string,
+  tradingStyle: 'scalp' | 'day' | 'swing' | 'position' = 'swing',
+  source: 'binance' | 'moex' = 'binance',
+): Promise<MLPredictionV2 | null> {
+  return backendFetch<MLPredictionV2>(`/ml/predict`, {
+    method: 'POST',
+    body: JSON.stringify({
+      symbol,
+      interval,
+      trading_style: tradingStyle,
+      source,
+    }),
+  });
+}
+
+export async function listMLModels(): Promise<{
+  health: { loaded_at: string; n_models: number; models: string[] };
+  models: {
+    key: string; symbol: string; interval: string;
+    horizon: number; accuracy: number; sharpe: number; f1: number;
+    n_folds: number; trained_at: string; n_features: number; n_trees: number;
+  }[];
+} | null> {
+  return backendFetch(`/ml/models`);
+}
+
+// ─── Fundamental News ───────────────────────────
+
+export interface NewsItem {
+  source: 'finnhub' | 'coindesk' | 'cointelegraph' | 'alphavantage' | string;
+  category: 'macro' | 'geopolitics' | 'regulation' | 'adoption' | 'crypto' | 'general' | string;
+  headline: string;
+  summary?: string;
+  url: string;
+  published_at: string;
+  sentiment: number;
+  mentions_coin?: boolean;
+}
+
+export interface NewsAggregate {
+  items: NewsItem[];
+  overall_sentiment: number;
+  bullish_count: number;
+  bearish_count: number;
+  neutral_count: number;
+  fetched_at: string;
+}
+
+export async function fetchFundamentalNews(
+  symbol: string,
+  hours = 24,
+): Promise<NewsAggregate | null> {
+  return backendFetch<NewsAggregate>(
+    `/news/fundamental?symbol=${encodeURIComponent(symbol)}&hours=${hours}`,
+  );
 }
 
 // ─── Crypto Scanner ─────────────────────────────

@@ -1,6 +1,8 @@
-import { supabase } from './supabase';
 import type { Node, Edge } from '@xyflow/react';
 import type { SegmentMode } from '../types/nodes';
+import { authHeaders } from './authClient';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8080';
 
 export interface Strategy {
   id: string;
@@ -14,66 +16,58 @@ export interface Strategy {
   updated_at: string;
 }
 
-export async function fetchStrategies(): Promise<Strategy[]> {
-  // Timeout after 5 seconds
+async function request<T>(path: string, init: RequestInit = {}): Promise<T | null> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-
+  const timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const { data, error } = await supabase
-      .from('strategies')
-      .select('*')
-      .order('updated_at', { ascending: false })
-      .abortSignal(controller.signal);
-
+    const res = await fetch(`${BACKEND_URL}/api/v1${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+        ...(init.headers ?? {}),
+      },
+    });
     clearTimeout(timeout);
-
-    if (error) {
-      console.error('fetchStrategies error:', error);
-      return [];
-    }
-    return (data ?? []) as Strategy[];
-  } catch (err) {
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text ? (JSON.parse(text) as T) : null;
+  } catch {
     clearTimeout(timeout);
-    console.error('fetchStrategies timeout/error:', err);
-    return [];
+    return null;
   }
 }
 
-export async function fetchStrategy(id: string): Promise<Strategy | null> {
-  const { data, error } = await supabase
-    .from('strategies')
-    .select('*')
-    .eq('id', id)
-    .single();
+export async function fetchStrategies(): Promise<Strategy[]> {
+  const data = await request<{ strategies: Strategy[] }>('/strategies', { method: 'GET' });
+  return data?.strategies ?? [];
+}
 
-  if (error) return null;
-  return data as Strategy;
+export async function fetchStrategy(id: string): Promise<Strategy | null> {
+  return request<Strategy>(`/strategies/${id}`, { method: 'GET' });
 }
 
 export async function createStrategy(
-  userId: string,
+  _userId: string,
   name: string,
   nodes: Node[],
   edges: Edge[],
   segment: SegmentMode,
   selectedPair: string,
 ): Promise<Strategy> {
-  const { data, error } = await supabase
-    .from('strategies')
-    .insert({
-      user_id: userId,
+  const result = await request<Strategy>('/strategies', {
+    method: 'POST',
+    body: JSON.stringify({
       name,
       nodes_json: nodes,
       edges_json: edges,
       segment,
       selected_pair: selectedPair,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Strategy;
+    }),
+  });
+  if (!result) throw new Error('Failed to create strategy');
+  return result;
 }
 
 export async function updateStrategy(
@@ -86,21 +80,27 @@ export async function updateStrategy(
     selected_pair?: string;
   },
 ): Promise<void> {
-  const { error } = await supabase
-    .from('strategies')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id);
+  // Fetch existing to merge partial updates (backend expects full record).
+  const existing = await fetchStrategy(id);
+  if (!existing) throw new Error('Strategy not found');
 
-  if (error) throw error;
+  const merged = {
+    name: updates.name ?? existing.name,
+    nodes_json: updates.nodes_json ?? existing.nodes_json,
+    edges_json: updates.edges_json ?? existing.edges_json,
+    segment: updates.segment ?? existing.segment,
+    selected_pair: updates.selected_pair ?? existing.selected_pair,
+  };
+  const result = await request<Strategy>(`/strategies/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(merged),
+  });
+  if (!result) throw new Error('Failed to update strategy');
 }
 
 export async function deleteStrategy(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('strategies')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
+  const result = await request<{ status: string }>(`/strategies/${id}`, { method: 'DELETE' });
+  if (!result) throw new Error('Failed to delete strategy');
 }
 
 export async function duplicateStrategy(id: string, userId: string): Promise<Strategy> {
@@ -112,7 +112,7 @@ export async function duplicateStrategy(id: string, userId: string): Promise<Str
     `${original.name} (copy)`,
     original.nodes_json,
     original.edges_json,
-    original.segment as SegmentMode,
+    original.segment,
     original.selected_pair,
   );
 }

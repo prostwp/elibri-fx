@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { OHLCVCandle, CryptoScanResult, MLPrediction } from '../types/nodes';
+import type { NewsAggregate } from '../lib/backendClient';
 
 export interface CryptoPrice {
   price: number;
@@ -36,6 +37,10 @@ interface CryptoState {
   setMLPrediction: (symbol: string, prediction: MLPrediction) => void;
   mlStatus: 'idle' | 'predicting' | 'error';
   setMLStatus: (status: CryptoState['mlStatus']) => void;
+
+  // News aggregate per symbol (from CryptoFundamentalNode)
+  newsAggregate: Record<string, NewsAggregate>;
+  setNewsAggregate: (symbol: string, news: NewsAggregate) => void;
 
   // Actions
   setStatus: (status: CryptoState['status']) => void;
@@ -86,6 +91,10 @@ export const useCryptoStore = create<CryptoState>((set, get) => ({
   mlStatus: 'idle',
   setMLStatus: (mlStatus) => set({ mlStatus }),
 
+  newsAggregate: {},
+  setNewsAggregate: (symbol, news) =>
+    set({ newsAggregate: { ...get().newsAggregate, [symbol]: news } }),
+
   setStatus: (status) => set({ status }),
   setError: (error) => set({ error }),
   setConfig: (config) => set({ config }),
@@ -100,5 +109,6 @@ export const useCryptoStore = create<CryptoState>((set, get) => ({
       scanResults: [],
       mlPredictions: {},
       mlStatus: 'idle',
+      newsAggregate: {},
     }),
 }));

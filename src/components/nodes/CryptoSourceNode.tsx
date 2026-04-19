@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BaseNode } from './BaseNode';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useCryptoStore } from '../../stores/useCryptoStore';
@@ -8,6 +9,10 @@ export function CryptoSourceNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const setSelectedPair = useFlowStore(s => s.setSelectedPair);
   const pair = (data.pair as string) || 'BTCUSDT';
+
+  useEffect(() => {
+    setSelectedPair(pair);
+  }, [pair, setSelectedPair]);
 
   const cryptoStatus = useCryptoStore(s => s.status);
   const prices = useCryptoStore(s => s.prices);

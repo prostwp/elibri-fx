@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { UserPlus, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserPlus, Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 export function RegisterPage() {
@@ -9,8 +9,8 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const { signUp, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,36 +33,11 @@ export function RegisterPage() {
 
     const result = await signUp(email, password, displayName);
     if (result.success) {
-      setSuccess(true);
+      navigate('/app', { replace: true });
     } else {
       setError(result.error);
     }
   };
-
-  if (success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] px-4">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-slate-800 bg-[#0d0d14] p-8 text-center">
-            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
-              <CheckCircle className="h-6 w-6 text-emerald-400" />
-            </div>
-            <h2 className="mb-2 text-xl font-semibold text-white">Check your email</h2>
-            <p className="mb-6 text-sm text-slate-400">
-              We sent a confirmation link to <strong className="text-white">{email}</strong>.
-              Click the link to activate your account.
-            </p>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500"
-            >
-              Back to Sign In
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] px-4">
