@@ -63,7 +63,13 @@ export function MLLabPage() {
     setLoading(false);
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+    // Poll every 30s so the page reflects fresh training/backtest output
+    // without manual reload.
+    const id = setInterval(refresh, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const handleReload = async () => {
     setReloading(true);
