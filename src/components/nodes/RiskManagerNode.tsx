@@ -11,7 +11,7 @@
  *   swing:    risk 1.0%, SL 1.5×ATR, TP 2.5×ATR  (balanced)
  *   position: risk 1.5%, SL 2.0×ATR, TP 4.0×ATR  (wide stops)
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BaseNode } from './BaseNode';
 import { useFlowStore } from '../../stores/useFlowStore';
 import type { NodeProps } from '@xyflow/react';
@@ -60,11 +60,14 @@ export function RiskManagerNode({ id, data }: NodeProps) {
     ? ((data.tpAtrMult as number) ?? suggested.tpMult)
     : suggested.tpMult;
 
-  const [showDetails, setShowDetails] = useState(false);
+  // Unused state kept for future collapse/expand UI.
+  const [_showDetails, setShowDetails] = useState(false);
+  void _showDetails;
 
-  // Sync effective values into node data whenever style/suggestion changes
-  // — so graphEngine always reads the actual computed defaults.
-  useMemo(() => {
+  // Sync effective values into node data via useEffect (not useMemo —
+  // side effects in memo break in React 19 StrictMode double-invoke).
+  // graphEngine.buildTradeSetup reads these from node.data directly.
+  useEffect(() => {
     updateNodeData(id, {
       maxRiskPct: effectiveRiskPct,
       slAtrMult: effectiveSlMult,
@@ -225,7 +228,6 @@ export function RiskManagerNode({ id, data }: NodeProps) {
           <span className="text-gray-400">Output →</span> Dashboard (size, SL, TP, $risk, R:R)
         </div>
 
-        {showDetails && <div className="hidden" />}
       </div>
     </BaseNode>
   );
