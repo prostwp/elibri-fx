@@ -90,9 +90,12 @@ export function CryptoMLNode({ id, data }: NodeProps) {
     setLoading(true);
     setErr(null);
     try {
-      // Multi-timeframe analysis: query 1h + 4h + 1d simultaneously so
-      // trader sees if lower-TF signal aligns with higher-TF trend.
-      const multi = await predictMLv2Multi(pair, ['1h', '4h', '1d'], tradingStyle);
+      // Multi-timeframe analysis: query all 5 intervals so the full MTF
+      // alignment picture is visible. Including user's chosen `interval`
+      // guarantees the primary prediction comes from their selection
+      // (dedup via Set so request is clean).
+      const mtfIntervals = Array.from(new Set([interval, '5m', '15m', '1h', '4h', '1d']));
+      const multi = await predictMLv2Multi(pair, mtfIntervals, tradingStyle);
       if (multi) {
         setMtf(multi);
         // Primary prediction = the interval user selected (from CryptoTechnical).
@@ -209,7 +212,7 @@ export function CryptoMLNode({ id, data }: NodeProps) {
                 {mtf.consensus.direction.toUpperCase()} · {Math.round(mtf.consensus.alignment * 100)}%
               </span>
             </div>
-            {(['1h', '4h', '1d'] as const).map(iv => {
+            {(['5m', '15m', '1h', '4h', '1d'] as const).map(iv => {
               const p = mtf.predictions[iv];
               if (!p) return (
                 <div key={iv} className="flex items-center justify-between text-[9px]">
