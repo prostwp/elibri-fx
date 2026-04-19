@@ -160,13 +160,14 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
                 coindesk: 'CD',
                 cointelegraph: 'CT',
                 alphavantage: 'AV',
+                reddit: 'R',
                 'lunarcrush-tweet': '𝕏',
                 'lunarcrush-reddit-post': 'R',
                 'lunarcrush-news': 'LC',
               };
               const srcLabel = sourceShort[it.source] ?? it.source.slice(0, 2).toUpperCase();
-              const isSocial = it.source.startsWith('lunarcrush-');
-              const isKOL = isSocial && it.mentions_coin; // backend flagged verified KOL
+              const isSocial = it.source === 'reddit' || it.source.startsWith('lunarcrush-');
+              const isKOL = isSocial && it.mentions_coin; // backend flagged verified KOL / high-signal
               return (
                 <div
                   key={i}

@@ -511,7 +511,8 @@ export function evaluateGraph(
           const filtered = news.items.filter(it =>
             enabledCats.includes(it.category) ||
             (enabledCats.includes('crypto') && (it.source === 'coindesk' || it.source === 'cointelegraph')) ||
-            (enabledCats.includes('social') && typeof it.source === 'string' && it.source.startsWith('lunarcrush-')),
+            (enabledCats.includes('social') && typeof it.source === 'string' &&
+              (it.source === 'reddit' || it.source.startsWith('lunarcrush-'))),
           );
           if (filtered.length > 0) {
             const now = Date.now();
