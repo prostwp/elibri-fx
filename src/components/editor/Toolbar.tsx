@@ -104,7 +104,7 @@ export function Toolbar() {
 
         <div className="w-px h-5 bg-white/10 mx-1" />
 
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mr-1">Шаблоны:</span>
+        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mr-1">Templates:</span>
         {TEMPLATE_CATEGORIES.map(cat => {
           const items = TEMPLATES.filter(t => t.category === cat.key);
           const isOpen = openCategory === cat.key;
@@ -140,7 +140,7 @@ export function Toolbar() {
               {isOpen && (
                 <div className="absolute top-11 left-0 z-50 w-64 rounded-xl border border-slate-700 bg-[#0d0d14] py-1 shadow-2xl">
                   {items.length === 0 ? (
-                    <div className="px-3 py-2 text-[10px] text-gray-500">Нет шаблонов</div>
+                    <div className="px-3 py-2 text-[10px] text-gray-500">No templates</div>
                   ) : (
                     items.map(t => (
                       <button

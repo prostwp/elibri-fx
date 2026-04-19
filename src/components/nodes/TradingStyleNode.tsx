@@ -4,57 +4,57 @@ import type { NodeProps } from '@xyflow/react';
 
 const STYLES = {
   scalping: {
-    label: 'Скальпинг',
+    label: 'Scalping',
     icon: '⚡',
-    horizon: '1-30 мин',
+    horizon: '1-30 min',
     stopLoss: '0.1-0.3%',
     takeProfit: '0.2-0.5%',
     riskReward: '1:1.5',
-    focus: 'Объёмы, стакан, тиковые данные',
+    focus: 'Volume, order book, tick data',
     color: 'text-red-400',
     bg: 'bg-red-500/10 border-red-500/20',
   },
   daytrading: {
-    label: 'Дейтрейдинг',
+    label: 'Day trading',
     icon: '📊',
-    horizon: '1 час — 1 день',
+    horizon: '1h–1 day',
     stopLoss: '0.5-1.5%',
     takeProfit: '1-3%',
     riskReward: '1:2',
-    focus: 'Технический анализ, новости, уровни',
+    focus: 'Technical analysis, news, levels',
     color: 'text-amber-400',
     bg: 'bg-amber-500/10 border-amber-500/20',
   },
   swing: {
-    label: 'Свинг',
+    label: 'Swing',
     icon: '🌊',
-    horizon: '2-14 дней',
+    horizon: '2-14 days',
     stopLoss: '2-5%',
     takeProfit: '5-15%',
     riskReward: '1:3',
-    focus: 'Тренды, паттерны, мультипликаторы',
+    focus: 'Trends, patterns, multipliers',
     color: 'text-indigo-400',
     bg: 'bg-indigo-500/10 border-indigo-500/20',
   },
   position: {
-    label: 'Позиционная',
+    label: 'Position',
     icon: '🏔️',
-    horizon: '1-6 месяцев',
+    horizon: '1-6 months',
     stopLoss: '5-10%',
     takeProfit: '15-50%',
     riskReward: '1:3-5',
-    focus: 'Фундаментал, макро, дивиденды',
+    focus: 'Fundamentals, macro, dividends',
     color: 'text-emerald-400',
     bg: 'bg-emerald-500/10 border-emerald-500/20',
   },
   longterm: {
-    label: 'Долгосрок',
+    label: 'Long-term',
     icon: '🏦',
-    horizon: '6+ месяцев',
+    horizon: '6+ months',
     stopLoss: '10-20%',
     takeProfit: '30-100%+',
     riskReward: '1:5+',
-    focus: 'DCF, FCF, дивиденды, рост бизнеса',
+    focus: 'DCF, FCF, dividends, business growth',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/20',
   },
@@ -97,7 +97,7 @@ export function TradingStyleNode({ id, data }: NodeProps) {
 
           <div className="space-y-1">
             <div className="flex justify-between">
-              <span className="text-[9px] text-gray-500">Горизонт</span>
+              <span className="text-[9px] text-gray-500">Horizon</span>
               <span className="text-[9px] text-white font-semibold">{s.horizon}</span>
             </div>
             <div className="flex justify-between">
@@ -116,7 +116,7 @@ export function TradingStyleNode({ id, data }: NodeProps) {
         </div>
 
         <div className="text-[8px] text-gray-500 leading-relaxed px-1">
-          <span className="text-gray-400 font-semibold">Фокус:</span> {s.focus}
+          <span className="text-gray-400 font-semibold">Focus:</span> {s.focus}
         </div>
       </div>
     </BaseNode>

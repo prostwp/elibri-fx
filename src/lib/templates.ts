@@ -14,8 +14,8 @@ interface Template {
 }
 
 export const TEMPLATE_CATEGORIES: { key: TemplateCategory; label: string; icon: string }[] = [
-  { key: 'stocks', label: 'Акции', icon: '📊' },
-  { key: 'crypto', label: 'Крипта', icon: '₿' },
+  { key: 'stocks', label: 'Stocks', icon: '📊' },
+  { key: 'crypto', label: 'Crypto', icon: '₿' },
 ];
 
 const edgeStyle = { stroke: '#6366f1', strokeWidth: 2 };

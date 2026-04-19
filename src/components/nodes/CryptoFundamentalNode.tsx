@@ -9,11 +9,11 @@ const CATEGORIES = ['macro', 'geopolitics', 'regulation', 'adoption', 'crypto'] 
 type Category = typeof CATEGORIES[number];
 
 const CATEGORY_LABEL: Record<Category, string> = {
-  macro: 'Макро',
-  geopolitics: 'Геополитика',
-  regulation: 'Регулирование',
+  macro: 'Macro',
+  geopolitics: 'Geopolitics',
+  regulation: 'Regulation',
   adoption: 'Adoption',
-  crypto: 'Крипта',
+  crypto: 'Crypto',
 };
 
 const CATEGORY_COLOR: Record<Category, string> = {
@@ -133,7 +133,7 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
         {/* Aggregate verdict */}
         <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
           <span className="text-[10px] text-white/70">
-            {filtered.length} новост{filtered.length === 1 ? 'ь' : filtered.length < 5 ? 'и' : 'ей'} за {hours}ч
+            {filtered.length} news in last {hours}h
           </span>
           <span className={`text-[11px] font-bold ${verdictColor}`}>
             {verdictIcon} {filteredSentiment >= 0 ? '+' : ''}{filteredSentiment.toFixed(2)}
@@ -144,7 +144,7 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
         {loading ? (
           <div className="text-[9px] text-gray-500">Loading…</div>
         ) : visible.length === 0 ? (
-          <div className="text-[9px] text-gray-500">Нет новостей по фильтру</div>
+          <div className="text-[9px] text-gray-500">No news matching filter</div>
         ) : (
           <div className="space-y-1">
             {visible.map((it, i) => {
@@ -196,7 +196,7 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
             onClick={() => setExpanded(v => !v)}
             className="w-full text-[9px] text-indigo-400/80 hover:text-indigo-300 text-center py-0.5 rounded hover:bg-white/5 transition"
           >
-            {expanded ? '▲ Свернуть' : `▼ Ещё ${Math.min(filtered.length - 2, 3)}`}
+            {expanded ? '▲ Collapse' : `▼ ${Math.min(filtered.length - 2, 3)} more`}
           </button>
         )}
       </div>

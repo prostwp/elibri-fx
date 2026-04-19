@@ -13,14 +13,14 @@ const DIVIDEND_DATA: Record<string, {
   yearsConsecutive: number;
   growth5y: number; // 5yr dividend growth %
 }> = {
-  SBER: { dps: 33.3, payoutRatio: 50, exDate: '2025-07-14', frequency: '1x/год', yearsConsecutive: 5, growth5y: 25 },
-  GAZP: { dps: 7.4, payoutRatio: 50, exDate: '2025-07-21', frequency: '1x/год', yearsConsecutive: 2, growth5y: -15 },
-  LKOH: { dps: 885, payoutRatio: 100, exDate: '2025-06-02', frequency: '2x/год', yearsConsecutive: 8, growth5y: 18 },
-  YNDX: { dps: 0, payoutRatio: 0, exDate: '-', frequency: 'Не платит', yearsConsecutive: 0, growth5y: 0 },
-  GMKN: { dps: 915, payoutRatio: 50, exDate: '2025-06-16', frequency: '1x/год', yearsConsecutive: 10, growth5y: -8 },
-  NLMK: { dps: 12.5, payoutRatio: 60, exDate: '2025-06-09', frequency: '4x/год', yearsConsecutive: 4, growth5y: 5 },
-  ROSN: { dps: 36.5, payoutRatio: 50, exDate: '2025-07-07', frequency: '2x/год', yearsConsecutive: 6, growth5y: 12 },
-  MTSS: { dps: 35, payoutRatio: 100, exDate: '2025-07-10', frequency: '2x/год', yearsConsecutive: 12, growth5y: 8 },
+  SBER: { dps: 33.3, payoutRatio: 50, exDate: '2025-07-14', frequency: '1x/year', yearsConsecutive: 5, growth5y: 25 },
+  GAZP: { dps: 7.4, payoutRatio: 50, exDate: '2025-07-21', frequency: '1x/year', yearsConsecutive: 2, growth5y: -15 },
+  LKOH: { dps: 885, payoutRatio: 100, exDate: '2025-06-02', frequency: '2x/year', yearsConsecutive: 8, growth5y: 18 },
+  YNDX: { dps: 0, payoutRatio: 0, exDate: '-', frequency: 'No payout', yearsConsecutive: 0, growth5y: 0 },
+  GMKN: { dps: 915, payoutRatio: 50, exDate: '2025-06-16', frequency: '1x/year', yearsConsecutive: 10, growth5y: -8 },
+  NLMK: { dps: 12.5, payoutRatio: 60, exDate: '2025-06-09', frequency: '4x/year', yearsConsecutive: 4, growth5y: 5 },
+  ROSN: { dps: 36.5, payoutRatio: 50, exDate: '2025-07-07', frequency: '2x/year', yearsConsecutive: 6, growth5y: 12 },
+  MTSS: { dps: 35, payoutRatio: 100, exDate: '2025-07-10', frequency: '2x/year', yearsConsecutive: 12, growth5y: 8 },
 };
 
 export function DividendNode({ id, data }: NodeProps) {
@@ -44,7 +44,7 @@ export function DividendNode({ id, data }: NodeProps) {
     <BaseNode icon="💎" label="Dividend Capture" category="analysis"
       weight={weight} onWeightChange={(w) => updateNodeData(id, { weight: w })}>
       <div className="space-y-1.5 min-w-[210px]">
-        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Дивиденды</div>
+        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Dividends</div>
 
         <div className="grid grid-cols-2 gap-1.5">
           <div className="bg-white/5 rounded px-2 py-1.5 text-center">
@@ -65,15 +65,15 @@ export function DividendNode({ id, data }: NodeProps) {
             <span className={`font-bold ${div.payoutRatio > 80 ? 'text-amber-400' : 'text-emerald-400'}`}>{div.payoutRatio}%</span>
           </div>
           <div className="flex justify-between text-[9px]">
-            <span className="text-gray-500">Частота</span>
+            <span className="text-gray-500">Frequency</span>
             <span className="text-white">{div.frequency}</span>
           </div>
           <div className="flex justify-between text-[9px]">
-            <span className="text-gray-500">Подряд лет</span>
+            <span className="text-gray-500">Consecutive years</span>
             <span className={`font-bold ${div.yearsConsecutive >= 5 ? 'text-emerald-400' : 'text-amber-400'}`}>{div.yearsConsecutive}</span>
           </div>
           <div className="flex justify-between text-[9px]">
-            <span className="text-gray-500">Рост 5л</span>
+            <span className="text-gray-500">5yr growth</span>
             <span className={`font-bold ${div.growth5y > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {div.growth5y > 0 ? '+' : ''}{div.growth5y}%
             </span>
@@ -86,12 +86,12 @@ export function DividendNode({ id, data }: NodeProps) {
             daysToEx < 90 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
             'bg-white/5 border-white/10 text-gray-400'
           }`}>
-            {daysToEx === 0 ? '🔴 ОТСЕЧКА СЕГОДНЯ' : `До отсечки: ${daysToEx} дней (${div.exDate})`}
+            {daysToEx === 0 ? '🔴 RECORD DATE TODAY' : `To record date: ${daysToEx} days (${div.exDate})`}
           </div>
         )}
         {div.dps === 0 && (
           <div className="text-center py-1 rounded bg-red-500/10 border border-red-500/20 text-[10px] text-red-400 font-bold">
-            Не платит дивиденды
+            No dividend payout
           </div>
         )}
       </div>

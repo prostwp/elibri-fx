@@ -98,12 +98,12 @@ export function StockAnalysisNode({ id, data }: NodeProps) {
         <div className="border-t border-white/5 pt-1 space-y-0.5">
           <div className="flex justify-between">
             <span className="text-[8px] text-gray-500">EBITDA</span>
-            <span className="text-[9px] text-white">{fund.ebitda > 0 ? `${fund.ebitda} млрд` : 'N/A'}</span>
+            <span className="text-[9px] text-white">{fund.ebitda > 0 ? `${fund.ebitda}B` : 'N/A'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-[8px] text-gray-500">FCF</span>
             <span className={`text-[9px] font-bold ${fund.fcf > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {fund.fcf} млрд
+              {fund.fcf}B
             </span>
           </div>
           <div className="flex justify-between">

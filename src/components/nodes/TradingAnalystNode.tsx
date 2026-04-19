@@ -35,7 +35,7 @@ export function TradingAnalystNode({ id, data }: NodeProps) {
 
         {/* Role description */}
         <div className="text-[10px] text-gray-400 leading-snug">
-          Собирает сигналы из всех аналитических нод + ×1.2 boost когда все согласны в направлении.
+          Aggregates signals from all analysis nodes · ×1.2 boost when all agree.
         </div>
 
         {/* What it consumes */}

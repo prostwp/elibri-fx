@@ -288,7 +288,7 @@ export function PreviewPanel() {
                   <span className="text-[10px] text-gray-500 ml-1">units</span>
                 </span>
               ) : (
-                <span className="text-[10px] text-gray-500">не торговать</span>
+                <span className="text-[10px] text-gray-500">do not trade</span>
               )}
             </div>
             {graphResult.tradeSetup.direction !== 'hold' && (
@@ -343,6 +343,18 @@ export function PreviewPanel() {
         </div>
       )}
 
+      {/* Trade Summary — plain-English rationale */}
+      {hasNodes && graphResult.tradeSetup && (
+        <div className="px-4 py-2 border-b border-white/5 bg-white/[0.01]">
+          <div className="text-[9px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+            📝 Summary
+          </div>
+          <div className="text-[11px] text-white/80 leading-relaxed">
+            {buildTradeSummary(nodes, graphResult)}
+          </div>
+        </div>
+      )}
+
       {/* Graph Warnings */}
       {warnings.length > 0 && hasNodes && (
         <div className="px-4 py-2 border-b border-white/5 space-y-1">
@@ -389,6 +401,77 @@ export function PreviewPanel() {
       )}
     </div>
   );
+}
+
+// ─── Trade Summary builder ──────────────────────
+// Produces a 1-2 sentence plain-English rationale for the current trade
+// setup, citing the strongest contributing nodes and MTF consensus state.
+function buildTradeSummary(nodes: Node[], graph: ReturnType<typeof evaluateGraph>): string {
+  const ts = graph.tradeSetup;
+  if (!ts) return 'No Risk Manager in graph — add one to see trade summary.';
+
+  const dirLabel = ts.direction === 'buy' ? 'LONG' : ts.direction === 'sell' ? 'SHORT' : 'HOLD';
+  const conf = Math.round(graph.confidence);
+
+  // Pull MTF consensus from Crypto ML node data (set during predict).
+  const cml = nodes.find(n => n.type === 'cryptoML');
+  const mtf = cml?.data?.mtfConsensus as {
+    direction?: string;
+    alignment?: number;
+    high_quality?: boolean;
+  } | undefined;
+
+  // Summarize strongest signal sources.
+  const contributors = graph.signals
+    .filter(s => Math.abs(s.signal) > 0.15 && s.weight > 0.05)
+    .sort((a, b) => Math.abs(b.signal * b.weight) - Math.abs(a.signal * a.weight))
+    .slice(0, 2)
+    .map(s => prettyNodeName(s.nodeType))
+    .filter(Boolean);
+
+  // Case 1: explicit conflict → do not trade.
+  if (ts.hasConflict && ts.direction !== 'hold') {
+    return `Conflicting signals detected${mtf?.direction === 'mixed' ? ' across timeframes' : ''}. Size cut to ${(ts.positionSize).toFixed(4)} units (×0.5). Wait for cleaner setup before entering.`;
+  }
+
+  // Case 2: no direction — hold.
+  if (ts.direction === 'hold') {
+    if (mtf?.direction === 'mixed') {
+      return `Timeframes disagree (alignment ${Math.round((mtf.alignment ?? 0) * 100)}%). Do not trade — wait for higher-TF resolution.`;
+    }
+    return `No tradable edge right now (graph score ${graph.finalScore >= 0 ? '+' : ''}${graph.finalScore.toFixed(2)}, confidence ${conf}%). Hold and monitor.`;
+  }
+
+  // Case 3: tradable direction.
+  const sourcesPhrase = contributors.length
+    ? `${contributors.join(' and ')} support ${dirLabel}`
+    : `Graph score ${graph.finalScore >= 0 ? '+' : ''}${graph.finalScore.toFixed(2)} → ${dirLabel}`;
+
+  const mtfPhrase = mtf?.high_quality
+    ? ' All timeframes aligned.'
+    : mtf?.direction === 'mixed'
+      ? ' Warning: timeframes not fully aligned — proceed with caution.'
+      : '';
+
+  const posPhrase = `Enter ${ts.positionSize.toFixed(ts.positionSize < 1 ? 4 : 2)} units at $${ts.entry.toFixed(2)}, stop $${ts.stopLoss.toFixed(2)}, target $${ts.takeProfit.toFixed(2)} (R:R 1:${ts.riskRewardRatio.toFixed(2)}, risking $${ts.riskDollars.toFixed(0)}).`;
+
+  return `${sourcesPhrase} at ${conf}% confidence.${mtfPhrase} ${posPhrase}`;
+}
+
+function prettyNodeName(type: string): string {
+  const m: Record<string, string> = {
+    cryptoML: 'Crypto ML',
+    cryptoTechnical: 'Technical',
+    cryptoFundamental: 'News sentiment',
+    technicalIndicator: 'Indicators',
+    newsFeed: 'News',
+    sentiment: 'Sentiment',
+    fundamental: 'Fundamentals',
+    tradingAnalyst: 'Analyst',
+    chartPattern: 'Chart patterns',
+    tradingStyle: 'Trading style',
+  };
+  return m[type] ?? '';
 }
 
 // ─── Beginner View ──────────────────────────────
@@ -736,7 +819,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
           </div>
           {quote && (
             <div className={`text-[10px] ${quote.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {quote.changePercent >= 0 ? '+' : ''}{quote.change.toFixed(2)} ({quote.changePercent.toFixed(2)}%) за день
+              {quote.changePercent >= 0 ? '+' : ''}{quote.change.toFixed(2)} ({quote.changePercent.toFixed(2)}%) today
             </div>
           )}
         </div>
@@ -748,7 +831,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
           <div className={`text-4xl font-black ${portfolioScore >= 70 ? 'text-emerald-400' : portfolioScore >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
             {portfolioScore}
           </div>
-          <div className="text-[9px] text-gray-500 mb-2">из 100</div>
+          <div className="text-[9px] text-gray-500 mb-2">out of 100</div>
           <div className={`text-sm font-black ${verdictColor}`}>{verdict}</div>
           <div className="text-[9px] text-gray-500 mt-1">Graph confidence: {graphResult.confidence}%</div>
         </div>
@@ -760,7 +843,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
       </Section>
 
       {/* Price Levels */}
-      <Section title="Ценовые уровни">
+      <Section title="Price Levels">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex-1 h-2 bg-white/5 rounded-full relative overflow-hidden">
@@ -781,7 +864,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
             </div>
           </div>
           <div className="flex justify-between text-[9px]">
-            <span className="text-gray-500">Цена: <strong className="text-white">{quote?.price.toFixed(2) ?? fund.currentPrice} ₽</strong></span>
+            <span className="text-gray-500">Price: <strong className="text-white">{quote?.price.toFixed(2) ?? fund.currentPrice} ₽</strong></span>
             <span className="text-gray-500">Fair: <strong className="text-indigo-400">{fund.fairValue} ₽</strong></span>
           </div>
           <div className="flex gap-2">
@@ -802,7 +885,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
       </Section>
 
       {/* Key Multipliers */}
-      <Section title="Мультипликаторы">
+      <Section title="Multipliers">
         <div className="grid grid-cols-3 gap-2">
           {[
             { label: 'P/E', value: fund.pe.toFixed(1), good: fund.pe < 10 },
@@ -821,14 +904,14 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
       </Section>
 
       {/* Cash Flows */}
-      <Section title="Денежные потоки">
+      <Section title="Cash Flows">
         <div className="space-y-1.5">
           {[
-            { label: 'Выручка', value: `${fund.revenue} млрд`, growth: fund.revenueGrowth },
-            { label: 'EBITDA', value: fund.ebitda > 0 ? `${fund.ebitda} млрд` : 'N/A', growth: fund.ebitdaGrowth },
-            { label: 'Чист. прибыль', value: `${fund.netIncome} млрд`, growth: 0 },
-            { label: 'FCF', value: `${fund.fcf} млрд`, growth: fund.fcfGrowth },
-            { label: 'CAPEX', value: `${fund.capex} млрд`, growth: 0 },
+            { label: 'Revenue', value: `${fund.revenue}B`, growth: fund.revenueGrowth },
+            { label: 'EBITDA', value: fund.ebitda > 0 ? `${fund.ebitda}B` : 'N/A', growth: fund.ebitdaGrowth },
+            { label: 'Net Income', value: `${fund.netIncome}B`, growth: 0 },
+            { label: 'FCF', value: `${fund.fcf}B`, growth: fund.fcfGrowth },
+            { label: 'CAPEX', value: `${fund.capex}B`, growth: 0 },
           ].map(r => (
             <div key={r.label} className="flex items-center justify-between">
               <span className="text-[10px] text-gray-400">{r.label}</span>
@@ -846,7 +929,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
       </Section>
 
       {/* Profitability */}
-      <Section title="Рентабельность">
+      <Section title="Profitability">
         <div className="space-y-1.5">
           {[
             { label: 'ROE', value: fund.roe, max: 40 },
@@ -871,7 +954,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
       </Section>
 
       {/* Debt & Stress Test */}
-      <Section title="Долговая нагрузка">
+      <Section title="Debt Load">
         <div className="space-y-1.5">
           <div className="flex justify-between text-[10px]">
             <span className="text-gray-400">Net Debt / EBITDA</span>
@@ -890,7 +973,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
               'bg-red-500/10 border-red-500/20'
             }`}>
               <div className="flex justify-between text-[10px] mb-1">
-                <span className="text-gray-400">Стресс-тест</span>
+                <span className="text-gray-400">Stress test</span>
                 <span className={`font-bold ${stress.level === 'strong' ? 'text-emerald-400' : stress.level === 'moderate' ? 'text-amber-400' : 'text-red-400'}`}>
                   {stress.score}/100
                 </span>
@@ -906,7 +989,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
 
       {/* Sector Comparison */}
       {sector && sector.companies.length > 1 && (
-        <Section title={`Сектор: ${fund.sector}`}>
+        <Section title={`Sector: ${fund.sector}`}>
           <div className="space-y-1">
             {sector.companies.map((c, i) => (
               <div key={c.ticker} className={`flex items-center gap-2 px-2 py-1 rounded text-[10px] ${
@@ -925,10 +1008,10 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
       )}
 
       {/* Fair Value */}
-      <Section title="Оценка">
+      <Section title="Valuation">
         <div className="space-y-1.5">
           <div className="flex justify-between text-[10px]">
-            <span className="text-gray-400">Текущая цена</span>
+            <span className="text-gray-400">Current Price</span>
             <span className="text-white font-bold">{quote?.price.toFixed(2) ?? fund.currentPrice} ₽</span>
           </div>
           <div className="flex justify-between text-[10px]">
@@ -936,14 +1019,14 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
             <span className="text-indigo-400 font-bold">{fund.fairValue} ₽</span>
           </div>
           <div className="flex justify-between text-[10px]">
-            <span className="text-gray-400">Потенциал</span>
+            <span className="text-gray-400">Upside</span>
             <span className={`font-bold ${fund.upside > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {fund.upside > 0 ? '+' : ''}{fund.upside.toFixed(1)}%
             </span>
           </div>
           <div className="flex justify-between text-[10px]">
             <span className="text-gray-400">Market Cap</span>
-            <span className="text-white">{fund.marketCap} млрд ₽</span>
+            <span className="text-white">{fund.marketCap}B ₽</span>
           </div>
         </div>
       </Section>
@@ -958,18 +1041,18 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
       </Section>
 
       {/* Backtest — FOMO style */}
-      <Section title="Что было бы если...">
+      <Section title="What If...">
         {backtestLoading ? (
           <div className="flex items-center justify-center py-6">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-            <span className="ml-2 text-[10px] text-gray-500">Анализирую историю...</span>
+            <span className="ml-2 text-[10px] text-gray-500">Analyzing history...</span>
           </div>
         ) : backtestResult ? (
           <div className="space-y-3">
             {/* FOMO header */}
             <div className="text-center">
-              <div className="text-[10px] text-gray-500 mb-1">Если бы вы вложили 6 месяцев назад</div>
-              <div className="text-[22px] font-black text-white">1 000 000 ₽</div>
+              <div className="text-[10px] text-gray-500 mb-1">If you had invested 6 months ago</div>
+              <div className="text-[22px] font-black text-white">1,000,000 ₽</div>
             </div>
 
             {/* Equity curve */}
@@ -979,32 +1062,32 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
             <div className={`text-center py-3 rounded-xl border ${
               backtestResult.totalReturn > 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'
             }`}>
-              <div className="text-[10px] text-gray-500 mb-1">Сегодня у вас было бы</div>
+              <div className="text-[10px] text-gray-500 mb-1">Today you would have</div>
               <div className={`text-[26px] font-black ${backtestResult.totalReturn > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {(1000000 + 1000000 * backtestResult.totalReturn / 100).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
               </div>
               <div className={`text-[14px] font-bold mt-1 ${backtestResult.totalReturn > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {backtestResult.totalReturn > 0 ? '+' : ''}{backtestResult.totalReturn}% за 6 мес
+                {backtestResult.totalReturn > 0 ? '+' : ''}{backtestResult.totalReturn}% over 6 months
               </div>
               {backtestResult.totalReturn > 0 && (
                 <div className="text-[10px] text-emerald-400/60 mt-1">
-                  +{(1000000 * backtestResult.totalReturn / 100).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽ чистой прибыли
+                  +{(1000000 * backtestResult.totalReturn / 100).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽ net profit
                 </div>
               )}
             </div>
 
             {/* vs Buy & Hold */}
             <div className="rounded-lg border border-white/10 bg-white/[0.02] p-2">
-              <div className="text-[9px] text-gray-500 mb-1.5 text-center">Сравнение с простой покупкой</div>
+              <div className="text-[9px] text-gray-500 mb-1.5 text-center">Compared to simple buy & hold</div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="text-center">
-                  <div className="text-[8px] text-gray-500">Стратегия Elibri</div>
+                  <div className="text-[8px] text-gray-500">Elibri Strategy</div>
                   <div className={`text-[14px] font-black ${backtestResult.totalReturn > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {backtestResult.totalReturn > 0 ? '+' : ''}{backtestResult.totalReturn}%
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-[8px] text-gray-500">Просто купить {fund.ticker}</div>
+                  <div className="text-[8px] text-gray-500">Just buy {fund.ticker}</div>
                   <div className={`text-[14px] font-black ${backtestResult.buyHoldReturn > 0 ? 'text-white' : 'text-red-400'}`}>
                     {backtestResult.buyHoldReturn > 0 ? '+' : ''}{backtestResult.buyHoldReturn}%
                   </div>
@@ -1021,21 +1104,21 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
                 </span>
               </div>
               <div className="flex justify-between text-[9px]">
-                <span className="text-gray-500">Макс. просадка</span>
+                <span className="text-gray-500">Max drawdown</span>
                 <span className="text-red-400 font-bold">-{backtestResult.maxDrawdown}%</span>
               </div>
               <div className="flex justify-between text-[9px]">
-                <span className="text-gray-500">Сделок</span>
+                <span className="text-gray-500">Trades</span>
                 <span className="text-white font-bold">{backtestResult.totalTrades} (Win: {backtestResult.winRate}%)</span>
               </div>
             </div>
 
             <div className="text-[7px] text-gray-600 text-center leading-relaxed">
-              Результаты на исторических данных MOEX за период {backtestResult.period}. Прошлые результаты не гарантируют будущую доходность.
+              Results on MOEX historical data for period {backtestResult.period}. Past results do not guarantee future performance.
             </div>
           </div>
         ) : (
-          <div className="text-[10px] text-gray-500 text-center py-4">Нет данных для бэктеста</div>
+          <div className="text-[10px] text-gray-500 text-center py-4">No data for backtest</div>
         )}
       </Section>
 

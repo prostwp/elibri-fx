@@ -47,21 +47,21 @@ export function ReportSelectorNode({ id, data }: NodeProps) {
 
         <div className="space-y-1.5">
           <div className="rounded bg-blue-500/10 border border-blue-500/20 px-2 py-1.5">
-            <div className="text-[9px] font-bold text-blue-400">МСФО (IFRS)</div>
+            <div className="text-[9px] font-bold text-blue-400">IFRS (МСФО)</div>
             <div className="text-[8px] text-gray-400 leading-relaxed">
-              Консолидированная отчётность группы. Для оценки бизнеса в целом, сравнения с международными аналогами.
+              Consolidated group reporting. Used for overall business valuation and international comparison.
             </div>
           </div>
           <div className="rounded bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
-            <div className="text-[9px] font-bold text-amber-400">РСБУ (RAS)</div>
+            <div className="text-[9px] font-bold text-amber-400">RAS (РСБУ)</div>
             <div className="text-[8px] text-gray-400 leading-relaxed">
-              Юрлицо отдельно. Для дивидендов (база начисления), налоговой отчётности.
+              Standalone legal entity. Used for dividend basis and tax reporting.
             </div>
           </div>
         </div>
 
         <div className="text-[8px] text-gray-500 bg-white/5 rounded px-2 py-1">
-          💡 Дивиденды считают от РСБУ прибыли, оценку — по МСФО
+          💡 Dividends are paid from RAS earnings; valuation is done via IFRS
         </div>
       </div>
     </BaseNode>
@@ -86,19 +86,19 @@ export function CashFlowNode({ id, data }: NodeProps) {
     <BaseNode icon="💰" label="Cash Flow" category="analysis"
       weight={weight} onWeightChange={(w) => updateNodeData(id, { weight: w })}>
       <div className="space-y-1.5 min-w-[200px]">
-        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Денежные потоки</div>
+        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Cash Flows</div>
 
         <div className="grid grid-cols-2 gap-1.5">
           <div className="bg-white/5 rounded px-2 py-1.5">
-            <div className="text-[8px] text-gray-500">Выручка</div>
-            <div className="text-[10px] text-white font-bold">{fund.revenue} млрд</div>
+            <div className="text-[8px] text-gray-500">Revenue</div>
+            <div className="text-[10px] text-white font-bold">{fund.revenue}B</div>
             <div className={`text-[8px] ${fund.revenueGrowth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {fund.revenueGrowth > 0 ? '↑' : '↓'} {fund.revenueGrowth}% YoY
             </div>
           </div>
           <div className="bg-white/5 rounded px-2 py-1.5">
             <div className="text-[8px] text-gray-500">EBITDA</div>
-            <div className="text-[10px] text-white font-bold">{fund.ebitda > 0 ? `${fund.ebitda} млрд` : 'N/A'}</div>
+            <div className="text-[10px] text-white font-bold">{fund.ebitda > 0 ? `${fund.ebitda}B` : 'N/A'}</div>
             {fund.ebitdaGrowth !== 0 && (
               <div className={`text-[8px] ${fund.ebitdaGrowth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {fund.ebitdaGrowth > 0 ? '↑' : '↓'} {Math.abs(fund.ebitdaGrowth)}% YoY
@@ -108,7 +108,7 @@ export function CashFlowNode({ id, data }: NodeProps) {
           <div className="bg-white/5 rounded px-2 py-1.5">
             <div className="text-[8px] text-gray-500">FCF</div>
             <div className={`text-[10px] font-bold ${fund.fcf > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {fund.fcf} млрд
+              {fund.fcf}B
             </div>
             <div className={`text-[8px] ${fund.fcfGrowth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {fund.fcfGrowth > 0 ? '↑' : '↓'} {Math.abs(fund.fcfGrowth)}% YoY
@@ -116,9 +116,9 @@ export function CashFlowNode({ id, data }: NodeProps) {
           </div>
           <div className="bg-white/5 rounded px-2 py-1.5">
             <div className="text-[8px] text-gray-500">CAPEX</div>
-            <div className="text-[10px] text-white font-bold">{fund.capex} млрд</div>
+            <div className="text-[10px] text-white font-bold">{fund.capex}B</div>
             <div className="text-[8px] text-gray-500">
-              {fund.revenue > 0 ? `${((fund.capex / fund.revenue) * 100).toFixed(0)}% от выручки` : ''}
+              {fund.revenue > 0 ? `${((fund.capex / fund.revenue) * 100).toFixed(0)}% of revenue` : ''}
             </div>
           </div>
         </div>
@@ -151,13 +151,13 @@ export function DebtAnalysisNode({ id, data }: NodeProps) {
     <BaseNode icon="📉" label="Debt Analysis" category="analysis"
       weight={weight} onWeightChange={(w) => updateNodeData(id, { weight: w })}>
       <div className="space-y-1.5 min-w-[200px]">
-        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Долговая нагрузка</div>
+        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Debt Load</div>
 
         <div className="space-y-1">
           <div className="flex justify-between items-center">
             <span className="text-[9px] text-gray-400">Net Debt</span>
             <span className={`text-[10px] font-bold ${fund.netDebt < 0 ? 'text-emerald-400' : 'text-white'}`}>
-              {fund.netDebt < 0 ? `${fund.netDebt} млрд (кэш)` : `${fund.netDebt} млрд`}
+              {fund.netDebt < 0 ? `${fund.netDebt}B (cash)` : `${fund.netDebt}B`}
             </span>
           </div>
           <div className="flex justify-between items-center">
@@ -184,7 +184,7 @@ export function DebtAnalysisNode({ id, data }: NodeProps) {
         {stress && (
           <div className="border-t border-white/5 pt-1.5 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[8px] text-gray-500 font-semibold">СТРЕСС-ТЕСТ</span>
+              <span className="text-[8px] text-gray-500 font-semibold">STRESS TEST</span>
               <span className={`text-[10px] font-bold ${
                 stress.level === 'strong' ? 'text-emerald-400' : stress.level === 'moderate' ? 'text-amber-400' : 'text-red-400'
               }`}>
@@ -215,7 +215,7 @@ export function SectorCompareNode({ id, data }: NodeProps) {
   const weight = (data.weight as number) ?? 0.5;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
-  const sector = fund?.sector ?? 'Нефть и газ';
+  const sector = fund?.sector ?? 'Oil & Gas';
 
   const comparison = useMemo(() => getSectorComparison(sector), [sector]);
 
@@ -224,7 +224,7 @@ export function SectorCompareNode({ id, data }: NodeProps) {
       weight={weight} onWeightChange={(w) => updateNodeData(id, { weight: w })}>
       <div className="space-y-1.5 min-w-[220px]">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] text-gray-500 font-semibold">Сектор: {sector}</span>
+          <span className="text-[9px] text-gray-500 font-semibold">Sector: {sector}</span>
           <span className="text-[8px] text-gray-600">Avg P/E: {comparison.avgPe.toFixed(1)}</span>
         </div>
 
@@ -251,7 +251,7 @@ export function SectorCompareNode({ id, data }: NodeProps) {
 
         {comparison.companies[0] && (
           <div className="text-[8px] text-emerald-400 bg-emerald-500/10 rounded px-2 py-1">
-            🏆 Лучшая в секторе: <strong>{comparison.companies[0].name}</strong> (score {comparison.companies[0].score})
+            🏆 Sector leader: <strong>{comparison.companies[0].name}</strong> (score {comparison.companies[0].score})
           </div>
         )}
       </div>
@@ -282,7 +282,7 @@ export function ProfitabilityNode({ id, data }: NodeProps) {
     <BaseNode icon="📈" label="Profitability" category="analysis"
       weight={weight} onWeightChange={(w) => updateNodeData(id, { weight: w })}>
       <div className="space-y-1.5 min-w-[200px]">
-        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Рентабельность</div>
+        <div className="text-[9px] text-gray-500 font-semibold">{fund.name} — Profitability</div>
 
         {metrics.map(m => (
           <div key={m.label} className="space-y-0.5">
@@ -307,8 +307,8 @@ export function ProfitabilityNode({ id, data }: NodeProps) {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[9px] text-gray-400">Чистая прибыль</span>
-            <span className="text-[10px] text-white font-bold">{fund.netIncome} млрд ₽</span>
+            <span className="text-[9px] text-gray-400">Net Income</span>
+            <span className="text-[10px] text-white font-bold">{fund.netIncome}B ₽</span>
           </div>
         </div>
       </div>
@@ -349,10 +349,10 @@ export function PortfolioScoreNode({ id, data }: NodeProps) {
     const factors: string[] = [];
     // Derive factors from graph signals
     for (const sig of graphResult.signals) {
-      if (sig.signal > 0.3) factors.push(`${sig.label}: позитивный сигнал`);
-      else if (sig.signal < -0.3) factors.push(`${sig.label}: негативный сигнал`);
+      if (sig.signal > 0.3) factors.push(`${sig.label}: positive signal`);
+      else if (sig.signal < -0.3) factors.push(`${sig.label}: negative signal`);
     }
-    if (factors.length === 0) factors.push('Смешанные сигналы');
+    if (factors.length === 0) factors.push('Mixed signals');
 
     return { total: portfolioScore, verdict, factors };
   }, [portfolioScore, graphResult]);
@@ -379,7 +379,7 @@ export function PortfolioScoreNode({ id, data }: NodeProps) {
           }`}>
             {score.total}
           </div>
-          <div className="text-[8px] text-gray-500">из 100</div>
+          <div className="text-[8px] text-gray-500">out of 100</div>
         </div>
 
         {/* Verdict */}
@@ -391,7 +391,7 @@ export function PortfolioScoreNode({ id, data }: NodeProps) {
         <div className="space-y-0.5">
           {score.factors.map((f, i) => (
             <div key={i} className="text-[8px] text-gray-400 flex items-center gap-1">
-              <span>{f.includes('осторожно') || f.includes('Высок') || f.includes('дорого') ? '⚠️' : '✅'}</span>
+              <span>{f.includes('negative') || f.includes('Mixed') ? '⚠️' : '✅'}</span>
               {f}
             </div>
           ))}

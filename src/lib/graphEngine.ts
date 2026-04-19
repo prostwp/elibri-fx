@@ -530,7 +530,7 @@ export function evaluateGraph(
               name: 'News Sentiment',
               value: Math.round(signal * 100),
               signal: label,
-              description: `${filtered.length} новостей · ${filtered.filter(f => f.sentiment > 0.15).length} bull / ${filtered.filter(f => f.sentiment < -0.15).length} bear`,
+              description: `${filtered.length} news · ${filtered.filter(f => f.sentiment > 0.15).length} bull / ${filtered.filter(f => f.sentiment < -0.15).length} bear`,
             }];
           }
         }

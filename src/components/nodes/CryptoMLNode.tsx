@@ -235,12 +235,12 @@ export function CryptoMLNode({ id, data }: NodeProps) {
             })}
             {mtf.consensus.high_quality && (
               <div className="text-[8px] text-emerald-300 text-center bg-emerald-500/10 rounded px-1.5 py-0.5 mt-1">
-                ⚡ MTF ALIGNED · все ТФ согласны
+                ⚡ MTF ALIGNED · all TFs aligned
               </div>
             )}
             {mtf.consensus.direction === 'mixed' && (
               <div className="text-[8px] text-amber-300 text-center bg-amber-500/10 rounded px-1.5 py-0.5 mt-1">
-                ⚠ ТФ противоречат · не торговать
+                ⚠ TFs conflict · do not trade
               </div>
             )}
           </div>
@@ -313,7 +313,7 @@ export function CryptoMLNode({ id, data }: NodeProps) {
         {/* Similar situations */}
         {similar.length > 0 && (
           <div className="space-y-0.5 pt-1 border-t border-white/5">
-            <div className="text-[8px] text-gray-500 uppercase">Похожие случаи</div>
+            <div className="text-[8px] text-gray-500 uppercase">Similar cases</div>
             {similar.map((s, i) => {
               const out10 = s.outcome_10 * 100;
               const sign = out10 > 0 ? '+' : '';
@@ -331,7 +331,7 @@ export function CryptoMLNode({ id, data }: NodeProps) {
             })}
             {result?.metrics && result.metrics.avg_outcome_10 !== 0 && (
               <div className="flex items-center justify-between text-[9px] bg-purple-500/5 rounded px-1.5 py-0.5 mt-1">
-                <span className="text-purple-300/80">Ср. исход</span>
+                <span className="text-purple-300/80">Avg outcome</span>
                 <span className={result.metrics.avg_outcome_10 > 0 ? 'text-emerald-400/80' : 'text-red-400/80'}>
                   {result.metrics.avg_outcome_10 > 0 ? '+' : ''}
                   {(result.metrics.avg_outcome_10 * 100).toFixed(1)}%
