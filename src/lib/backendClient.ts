@@ -220,14 +220,30 @@ export async function reloadMLModels(): Promise<{ loaded: number } | null> {
 // ─── Fundamental News ───────────────────────────
 
 export interface NewsItem {
-  source: 'finnhub' | 'coindesk' | 'cointelegraph' | 'alphavantage' | string;
-  category: 'macro' | 'geopolitics' | 'regulation' | 'adoption' | 'crypto' | 'general' | string;
+  source:
+    | 'finnhub'
+    | 'coindesk'
+    | 'cointelegraph'
+    | 'alphavantage'
+    | 'lunarcrush-tweet'
+    | 'lunarcrush-reddit-post'
+    | 'lunarcrush-news'
+    | string;
+  category:
+    | 'macro'
+    | 'geopolitics'
+    | 'regulation'
+    | 'adoption'
+    | 'crypto'
+    | 'social'
+    | 'general'
+    | string;
   headline: string;
   summary?: string;
   url: string;
   published_at: string;
   sentiment: number;
-  mentions_coin?: boolean;
+  mentions_coin?: boolean; // for social: true = verified KOL
 }
 
 export interface NewsAggregate {

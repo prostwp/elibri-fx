@@ -216,7 +216,7 @@ export const TEMPLATES: Template[] = [
     nodes: [
       { id: 'ca1', type: 'cryptoAsset', position: { x: 0, y: 420 }, data: { pair: 'BTCUSDT' } },
       { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: -40 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'EMA'], interval: '4h', weight: 0.7 } },
-      { id: 'cm1', type: 'cryptoFundamental', position: { x: 380, y: 340 }, data: { categories: ['macro', 'geopolitics', 'regulation', 'crypto'], hours: 24, weight: 0.6 } },
+      { id: 'cm1', type: 'cryptoFundamental', position: { x: 380, y: 340 }, data: { categories: ['macro', 'geopolitics', 'regulation', 'crypto', 'social'], hours: 24, weight: 0.6 } },
       { id: 'ts1', type: 'tradingStyle', position: { x: 380, y: 820 }, data: { tradingStyle: 'swing', weight: 0.8 } },
       { id: 'ml1', type: 'cryptoML', position: { x: 860, y: 0 }, data: { weight: 0.8 } },
       { id: 'ta1', type: 'tradingAnalyst', position: { x: 860, y: 420 }, data: { weight: 0.8 } },
@@ -257,7 +257,7 @@ export const TEMPLATES: Template[] = [
       { id: 'ca1', type: 'cryptoAsset', position: { x: 0, y: 280 }, data: { pair: 'SOLUSDT' } },
       { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: 0 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'ATR'], interval: '1h', weight: 0.6 } },
       { id: 'cs1', type: 'cryptoScanner', position: { x: 380, y: 320 }, data: { scanMode: ['volume_spike', 'rsi_dip', 'price_dip'], thresholds: { volumeMultiplier: 2.5, rsiOversold: 30, dipPercent: 5 }, weight: 0.8 } },
-      { id: 'cm1', type: 'cryptoFundamental', position: { x: 760, y: 160 }, data: { categories: ['crypto', 'regulation', 'adoption'], hours: 24, weight: 0.7 } },
+      { id: 'cm1', type: 'cryptoFundamental', position: { x: 760, y: 160 }, data: { categories: ['crypto', 'regulation', 'adoption', 'social'], hours: 24, weight: 0.7 } },
       { id: 'rc1', type: 'riskCap', position: { x: 760, y: 480 }, data: { maxDailyLoss: 200, maxPositionSize: 0.2, maxTradesPerDay: 5, weight: 0.8 } },
       { id: 'db1', type: 'dashboard', position: { x: 1140, y: 280 }, data: {} },
     ],

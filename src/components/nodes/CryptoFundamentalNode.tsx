@@ -5,7 +5,7 @@ import { useCryptoStore } from '../../stores/useCryptoStore';
 import { fetchFundamentalNews, type NewsAggregate } from '../../lib/backendClient';
 import type { NodeProps } from '@xyflow/react';
 
-const CATEGORIES = ['macro', 'geopolitics', 'regulation', 'adoption', 'crypto'] as const;
+const CATEGORIES = ['macro', 'geopolitics', 'regulation', 'adoption', 'crypto', 'social'] as const;
 type Category = typeof CATEGORIES[number];
 
 const CATEGORY_LABEL: Record<Category, string> = {
@@ -14,6 +14,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
   regulation: 'Regulation',
   adoption: 'Adoption',
   crypto: 'Crypto',
+  social: 'Social',
 };
 
 const CATEGORY_COLOR: Record<Category, string> = {
@@ -22,6 +23,7 @@ const CATEGORY_COLOR: Record<Category, string> = {
   regulation: 'bg-amber-500/20 text-amber-300',
   adoption: 'bg-emerald-500/20 text-emerald-300',
   crypto: 'bg-purple-500/20 text-purple-300',
+  social: 'bg-sky-500/20 text-sky-300',
 };
 
 function isCryptoPair(pair: string): boolean {
@@ -34,7 +36,7 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
   const activePair = isCryptoPair(selectedPair) ? selectedPair : 'BTCUSDT';
   const weight = (data.weight as number) ?? 0.5;
   const enabledCats = useMemo(
-    () => (data.categories as Category[]) || ['macro', 'geopolitics', 'regulation'],
+    () => (data.categories as Category[]) || ['macro', 'geopolitics', 'regulation', 'social'],
     [data.categories],
   );
   const hours = (data.hours as number) || 24;
@@ -158,13 +160,20 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
                 coindesk: 'CD',
                 cointelegraph: 'CT',
                 alphavantage: 'AV',
+                'lunarcrush-tweet': '𝕏',
+                'lunarcrush-reddit-post': 'R',
+                'lunarcrush-news': 'LC',
               };
               const srcLabel = sourceShort[it.source] ?? it.source.slice(0, 2).toUpperCase();
+              const isSocial = it.source.startsWith('lunarcrush-');
+              const isKOL = isSocial && it.mentions_coin; // backend flagged verified KOL
               return (
                 <div
                   key={i}
                   className={`text-[9px] leading-snug flex items-start gap-1 rounded px-1 py-0.5 ${
-                    it.mentions_coin ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-white/3'
+                    isKOL ? 'bg-sky-500/10 border border-sky-500/30' :
+                    it.mentions_coin ? 'bg-amber-500/10 border border-amber-500/20' :
+                    'bg-white/3'
                   }`}
                 >
                   <span className={`${sentClass} font-bold text-[10px] shrink-0`}>
@@ -172,7 +181,10 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="text-white/85 line-clamp-1" title={it.headline}>
-                      {it.mentions_coin && (
+                      {isKOL && (
+                        <span className="text-[8px] font-bold text-sky-400 mr-0.5" title="Verified crypto influencer">⚡ KOL</span>
+                      )}
+                      {!isSocial && it.mentions_coin && (
                         <span className="text-[8px] font-bold text-amber-400 mr-0.5">[{activePair.replace('USDT', '')}]</span>
                       )}
                       {it.headline}
@@ -182,6 +194,11 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
                       <span className="text-[7px] text-gray-600">
                         {CATEGORY_LABEL[it.category as Category] ?? it.category}
                       </span>
+                      {isSocial && it.summary && (
+                        <span className="text-[7px] text-sky-400/80 truncate" title={it.summary}>
+                          {it.summary.split('·')[0]?.trim()}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
