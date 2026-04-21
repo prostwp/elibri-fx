@@ -2,6 +2,9 @@ import { useState, useCallback } from 'react';
 import * as authClient from '../lib/authClient';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useScenariosStore } from '../stores/useScenariosStore';
+import { useFlowStore } from '../stores/useFlowStore';
+import { disconnectMT5 } from '../lib/mt5';
+import { disconnectBinance } from '../lib/binance';
 
 interface AuthResult {
   success: boolean;
@@ -51,9 +54,20 @@ export function useAuth() {
     try {
       authClient.logout();
       reset();
-      // Clear cross-user caches so a 2nd user on the same browser
-      // doesn't see the prior user's running scenarios in the Toolbar chip.
+
+      // Clear EVERY cross-user surface so a 2nd user on the same browser
+      // never sees the prior user's strategies, ML state, or open
+      // MT5/Binance WebSockets. Reviewer flagged this as a demo-killer
+      // ("investor A signs in after B and sees B's canvas").
       useScenariosStore.getState().reset();
+      // Flow store: zero canvas nodes/edges + clear the "current strategy"
+      // pointer so autosave doesn't race to upload the prev user's work.
+      useFlowStore.getState().clear();
+      // Close any live broker connections the previous session opened.
+      // Idempotent — safe to call even if user never connected.
+      disconnectMT5();
+      disconnectBinance();
+
       return { success: true, error: null };
     } finally {
       setLoading(false);

@@ -14,6 +14,7 @@ import {
   type Strategy,
 } from '../../lib/strategies';
 import { startScenario, stopScenario } from '../../lib/scenarios';
+import { toast } from '../ui/Toast';
 import type { SegmentMode } from '../../types/nodes';
 
 interface Props {
@@ -65,6 +66,7 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
       if (!cancelled) {
         setStrategies([]);
         setLoading(false);
+        toast.error('Failed to load strategies — check backend connection');
       }
     });
 
@@ -85,8 +87,10 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
       );
       setCurrentStrategy(strategy.id, strategy.name);
       onClose();
+      toast.success('Strategy saved');
     } catch (err) {
       console.error('Failed to create strategy:', err);
+      toast.error('Failed to save strategy — try again');
     } finally {
       setCreating(false);
     }
@@ -106,8 +110,10 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
     try {
       const copy = await duplicateStrategy(id, user.id);
       setStrategies((prev) => [copy, ...prev]);
+      toast.success('Strategy duplicated');
     } catch (err) {
       console.error('Failed to duplicate:', err);
+      toast.error('Failed to duplicate strategy');
     }
   };
 
@@ -118,8 +124,10 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
         setCurrentStrategy(null, 'Untitled Strategy');
       }
       setStrategies((prev) => prev.filter((s) => s.id !== id));
+      toast.info('Strategy deleted');
     } catch (err) {
       console.error('Failed to delete:', err);
+      toast.error('Failed to delete strategy');
     }
   };
 
@@ -133,6 +141,9 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
       // Rollback.
       setStrategies((prev) => prev.map((x) => x.id === s.id ? { ...x, is_active: false } : x));
       console.error('Failed to activate scenario:', s.id);
+      toast.error(res.runner_error ? `Activate failed: ${res.runner_error}` : 'Failed to activate paper trading');
+    } else {
+      toast.success(`Activated: ${s.name}`);
     }
   };
 
@@ -147,6 +158,9 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
     if (res.status === 'error') {
       setStrategies((prev) => prev.map((x) => x.id === s.id ? { ...x, is_active: true } : x));
       console.error('Failed to stop scenario:', s.id);
+      toast.error('Failed to stop paper trading');
+    } else {
+      toast.info(`Stopped: ${s.name}`);
     }
   };
 

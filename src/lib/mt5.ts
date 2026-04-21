@@ -56,9 +56,16 @@ const META_API_PROVISIONING = 'https://mt-provisioning-api-v1.agiliumtrade.agili
 let _token: string | null = null;
 let _accountId: string | null = null;
 let _wsConnection: WebSocket | null = null;
-let _priceCallbacks: Map<string, (bid: number, ask: number) => void> = new Map();
-let _candleCallbacks: Map<string, (candle: OHLCVCandle) => void> = new Map();
+const _priceCallbacks: Map<string, (bid: number, ask: number) => void> = new Map();
+const _candleCallbacks: Map<string, (candle: OHLCVCandle) => void> = new Map();
 let _keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+// Guard against the "reconnect storm" pattern: WebSocket.onclose used to
+// unconditionally schedule ensureWebSocket() via setTimeout, so after
+// disconnectMT5() closed the socket, the pending timer fired and opened
+// a new zombie connection (with _token=null → spams auth errors forever).
+// Set to false in disconnectMT5(); onclose respects it.
+let _shouldReconnect = false;
+let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 function headers() {
   return {
@@ -141,6 +148,13 @@ export async function connectMT5(token: string, accountId: string): Promise<MT5A
 // ─── Disconnect ───────────────────────────────────
 
 export function disconnectMT5(): void {
+  // Kill any pending reconnect FIRST so a fired onclose from our own .close()
+  // below cannot schedule a new socket.
+  _shouldReconnect = false;
+  if (_reconnectTimer) {
+    clearTimeout(_reconnectTimer);
+    _reconnectTimer = null;
+  }
   if (_wsConnection) {
     _wsConnection.close();
     _wsConnection = null;
@@ -305,13 +319,29 @@ export function subscribePriceUpdates(
   _priceCallbacks.set(symbol, onPrice);
   if (onCandle) _candleCallbacks.set(symbol, onCandle);
 
+  // Enable reconnect only while the user is actively subscribed. Paired
+  // with disconnectMT5() which flips this back to false.
+  _shouldReconnect = true;
   ensureWebSocket();
   sendWsSubscribe(symbol);
 
-  // Return unsubscribe function
+  // Return unsubscribe function. If no callbacks remain, close the socket
+  // and stop the reconnect loop — otherwise a single mounted node that
+  // unsubscribes leaves the WebSocket alive forever for other nodes.
   return () => {
     _priceCallbacks.delete(symbol);
     _candleCallbacks.delete(symbol);
+    if (_priceCallbacks.size === 0 && _candleCallbacks.size === 0) {
+      _shouldReconnect = false;
+      if (_reconnectTimer) {
+        clearTimeout(_reconnectTimer);
+        _reconnectTimer = null;
+      }
+      if (_wsConnection) {
+        _wsConnection.close();
+        _wsConnection = null;
+      }
+    }
   };
 }
 
@@ -375,8 +405,14 @@ function ensureWebSocket() {
   };
 
   _wsConnection.onclose = () => {
-    // Reconnect after 5 seconds
-    setTimeout(ensureWebSocket, 5000);
+    // Only reconnect if the user is still connected (token present AND
+    // disconnectMT5 hasn't been called). Previously this fired
+    // unconditionally, producing a zombie reconnect loop after logout.
+    if (!_shouldReconnect || !_token || !_accountId) return;
+    _reconnectTimer = setTimeout(() => {
+      _reconnectTimer = null;
+      if (_shouldReconnect) ensureWebSocket();
+    }, 5000);
   };
 
   _wsConnection.onerror = () => {

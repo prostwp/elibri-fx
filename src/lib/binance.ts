@@ -211,10 +211,15 @@ export function subscribeKlines(
 
     ws.onclose = () => {
       _wsConnections.delete(stream);
-      // Auto-reconnect after 5s if callback still active
-      if (_klineCallbacks.has(key)) {
-        setTimeout(() => subscribeKlines(symbol, interval, onKline), 5000);
-      }
+      // Re-check the callback registry at FIRE TIME (not schedule time).
+      // disconnectBinance() may have cleared callbacks between the close
+      // event and the 5s retry timer — scheduling a new subscribe based
+      // on the closure-captured state produces a zombie reconnect loop.
+      setTimeout(() => {
+        if (_klineCallbacks.has(key)) {
+          subscribeKlines(symbol, interval, onKline);
+        }
+      }, 5000);
     };
 
     ws.onerror = () => ws.close();
@@ -263,9 +268,12 @@ export function subscribeTicker(
 
     ws.onclose = () => {
       _wsConnections.delete(stream);
-      if (_tickerCallbacks.has(symbol)) {
-        setTimeout(() => subscribeTicker(symbol, onTicker), 5000);
-      }
+      // Same re-check-at-fire-time pattern as subscribeKlines above.
+      setTimeout(() => {
+        if (_tickerCallbacks.has(symbol)) {
+          subscribeTicker(symbol, onTicker);
+        }
+      }, 5000);
     };
 
     ws.onerror = () => ws.close();

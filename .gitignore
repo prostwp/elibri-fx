@@ -30,3 +30,4 @@ dist-ssr
 
 # Claude Flow metadata
 .claude-flow/
+.claude/

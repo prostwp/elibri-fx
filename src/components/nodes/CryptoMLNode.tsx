@@ -57,12 +57,31 @@ function isCryptoPair(pair: string): boolean {
   return (CRYPTO_PAIRS as readonly string[]).includes(pair);
 }
 
-// TradingStyle string comes from upstream node; default is swing.
+// TradingStyle string comes from upstream TradingStyleNode; the node stores
+// UI-friendly keys ('scalping'/'daytrading'/'swing'/'position'/'longterm')
+// while the backend ML ensemble uses the short-form ('scalp'/'day'/'swing'
+// /'position'). Previously all five UI options except 'swing'/'position'
+// silently collapsed to 'swing' in the ML request — user picked "Scalping"
+// but got swing predictions. Map every UI key explicitly.
 function resolveTradingStyle(nodes: any[]): 'scalp' | 'day' | 'swing' | 'position' {
   const ts = nodes.find(n => n.type === 'tradingStyle');
   const v = ts?.data?.tradingStyle;
-  if (v === 'scalp' || v === 'day' || v === 'swing' || v === 'position') return v;
-  return 'swing';
+  switch (v) {
+    case 'scalping':
+    case 'scalp':
+      return 'scalp';
+    case 'daytrading':
+    case 'day':
+      return 'day';
+    case 'position':
+      return 'position';
+    case 'longterm':
+      // Backend has no 'longterm' horizon — position is the closest match.
+      return 'position';
+    case 'swing':
+    default:
+      return 'swing';
+  }
 }
 
 // Interval should come from upstream CryptoTechnical; fall back to 4h.

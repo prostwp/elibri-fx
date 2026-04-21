@@ -931,12 +931,17 @@ export function evaluateGraph(
     }
   }
 
-  // Final aggregation: each signal is scaled by its weight
-  // Weight 0% = signal ignored, Weight 100% = full signal
-  // Average of (signal * weight) across all nodes, NOT normalized by totalWeight
+  // Final aggregation: weight-normalized sum. Previously divided by
+  // activeSignals.length, which turned the weight slider into a magnitude
+  // multiplier instead of a normalization factor — a single node at 50%
+  // weight collapsed the score by 2× regardless of its signal strength.
+  // Now: finalScore = Σ(signal_i × weight_i) / Σ(weight_i), which is a
+  // proper weighted average in [-1, +1] irrespective of how many nodes
+  // participate or what their absolute weights are.
   const activeSignals = allSignals.filter(n => n.weight > 0.05);
-  const finalScore = activeSignals.length > 0
-    ? activeSignals.reduce((s, n) => s + n.signal * n.weight, 0) / activeSignals.length
+  const activeWeightSum = activeSignals.reduce((s, n) => s + n.weight, 0);
+  const finalScore = activeWeightSum > 0
+    ? activeSignals.reduce((s, n) => s + n.signal * n.weight, 0) / activeWeightSum
     : 0;
   const totalWeight = allSignals.reduce((s, n) => s + n.weight, 0);
 
