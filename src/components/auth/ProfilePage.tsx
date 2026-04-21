@@ -43,6 +43,12 @@ export function ProfilePage() {
   }, [profile?.telegram_chat_id]);
 
   const handleLinkTelegram = async () => {
+    if (tgBusy || tgPolling) return;                  // Guard against double-click / re-link races.
+    // Clear any stale interval from a previous code-request BEFORE creating a new one.
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
     setTgBusy(true);
     setMessage(null);
     const data = await linkTelegram();
@@ -271,7 +277,16 @@ export function ProfilePage() {
                     Waiting for confirmation from Telegram…
                   </>
                 ) : (
-                  <>Code expired? <button onClick={handleLinkTelegram} className="underline hover:text-slate-300">Generate new</button></>
+                  <>
+                    Code expired?{' '}
+                    <button
+                      onClick={handleLinkTelegram}
+                      disabled={tgBusy || tgPolling}
+                      className="underline hover:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Generate new
+                    </button>
+                  </>
                 )}
               </div>
               <p className="mt-2 text-[10px] text-slate-600 font-mono">Expires: {new Date(linkData.expires_at).toLocaleTimeString()}</p>

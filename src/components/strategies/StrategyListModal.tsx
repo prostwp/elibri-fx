@@ -25,8 +25,18 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [pendingActivate, setPendingActivate] = useState<string | null>(null);
+  // Set of strategy ids with a pending activate/stop request. A Set lets us
+  // safely handle multiple concurrent per-row actions without a single
+  // id overwriting another (per reviewer's race #4 finding).
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
   const [stopConfirmFor, setStopConfirmFor] = useState<Strategy | null>(null);
+
+  const addPending = (id: string) => setPendingIds((prev) => {
+    const n = new Set(prev); n.add(id); return n;
+  });
+  const removePending = (id: string) => setPendingIds((prev) => {
+    const n = new Set(prev); n.delete(id); return n;
+  });
   const { user } = useAuthStore();
   const {
     setNodes, setEdges, setSelectedPair, setSegmentMode,
@@ -114,11 +124,11 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
   };
 
   const handleActivate = async (s: Strategy) => {
-    setPendingActivate(s.id);
+    addPending(s.id);
     // Optimistic update.
     setStrategies((prev) => prev.map((x) => x.id === s.id ? { ...x, is_active: true } : x));
     const res = await startScenario(s.id);
-    setPendingActivate(null);
+    removePending(s.id);
     if (res.status === 'error') {
       // Rollback.
       setStrategies((prev) => prev.map((x) => x.id === s.id ? { ...x, is_active: false } : x));
@@ -130,10 +140,10 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
     if (!stopConfirmFor) return;
     const s = stopConfirmFor;
     setStopConfirmFor(null);
-    setPendingActivate(s.id);
+    addPending(s.id);
     setStrategies((prev) => prev.map((x) => x.id === s.id ? { ...x, is_active: false } : x));
     const res = await stopScenario(s.id);
-    setPendingActivate(null);
+    removePending(s.id);
     if (res.status === 'error') {
       setStrategies((prev) => prev.map((x) => x.id === s.id ? { ...x, is_active: true } : x));
       console.error('Failed to stop scenario:', s.id);
@@ -216,7 +226,7 @@ export function StrategyListModal({ isOpen, onClose }: Props) {
             <div className="space-y-2">
               {strategies.map((s) => {
                 const isActive = !!s.is_active;
-                const isPending = pendingActivate === s.id;
+                const isPending = pendingIds.has(s.id);
                 return (
                   <div
                     key={s.id}

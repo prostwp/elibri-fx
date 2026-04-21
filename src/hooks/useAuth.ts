@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import * as authClient from '../lib/authClient';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useScenariosStore } from '../stores/useScenariosStore';
 
 interface AuthResult {
   success: boolean;
@@ -50,6 +51,9 @@ export function useAuth() {
     try {
       authClient.logout();
       reset();
+      // Clear cross-user caches so a 2nd user on the same browser
+      // doesn't see the prior user's running scenarios in the Toolbar chip.
+      useScenariosStore.getState().reset();
       return { success: true, error: null };
     } finally {
       setLoading(false);

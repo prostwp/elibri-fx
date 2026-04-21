@@ -44,48 +44,50 @@ export function AlertsPage() {
     fetchStrategies().then(setStrategies).catch(() => setStrategies([]));
   }, [user]);
 
-  // Core fetcher — used by mount, manual refresh, and poll.
-  const load = useCallback(async (appending = false) => {
+  // Core fetcher — takes offset EXPLICITLY so stale-closure bug goes away.
+  // `appending=false` → replace list; `appending=true` → append page.
+  const load = useCallback(async (offsetToUse: number, appending: boolean) => {
     if (!user) return;
     if (appending) setLoading(true); else setRefreshing(true);
-    const nextOffset = appending ? offset : 0;
     const fresh = await listAlerts({
       strategyId: strategyFilter || undefined,
       limit: PAGE_SIZE,
-      offset: nextOffset,
+      offset: offsetToUse,
     });
     if (appending) {
       setAlerts((prev) => [...prev, ...fresh]);
     } else {
       setAlerts(fresh);
-      setOffset(0);
     }
     setHasMore(fresh.length === PAGE_SIZE);
     if (appending) setLoading(false); else setRefreshing(false);
-  }, [user, strategyFilter, offset]);
-
-  // Re-fetch on mount + whenever strategy filter changes.
-  useEffect(() => {
-    void load(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, strategyFilter]);
 
-  // 60s polling — refresh the first page only.
+  // Re-fetch page 1 on mount + whenever strategy filter changes (also resets offset).
+  useEffect(() => {
+    setOffset(0);
+    void load(0, false);
+  }, [user, strategyFilter, load]);
+
+  // 60s polling — refresh page 1 only. Uses latest `load` ref via dependency.
   useEffect(() => {
     if (!user) return;
     pollTimerRef.current = setInterval(() => {
-      void load(false);
+      void load(0, false);
     }, POLL_MS);
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, strategyFilter]);
+  }, [user, load]);
+
+  // Fire the paginated fetch whenever offset bumps via "Load more".
+  // Initial offset=0 is already handled by the filter-effect above.
+  useEffect(() => {
+    if (offset > 0) void load(offset, true);
+  }, [offset, load]);
 
   const handleLoadMore = () => {
     setOffset((prev) => prev + PAGE_SIZE);
-    // Trigger fetch with new offset on next tick.
-    setTimeout(() => void load(true), 0);
   };
 
   // Client-side filters applied to what we have.
@@ -168,7 +170,7 @@ export function AlertsPage() {
             </h1>
           </div>
           <button
-            onClick={() => void load(false)}
+            onClick={() => { setOffset(0); void load(0, false); }}
             disabled={refreshing}
             className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 transition disabled:opacity-50"
           >
