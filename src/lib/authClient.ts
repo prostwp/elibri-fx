@@ -13,6 +13,9 @@ export interface AuthUser {
   role: 'user' | 'admin';
   created_at: string;
   updated_at: string;
+  // Patch 2C + Patch 3 fields (optional — backend /auth/me populates them).
+  risk_tier?: 'conservative' | 'balanced' | 'aggressive';
+  telegram_chat_id?: number | null;
 }
 
 export interface AuthResult {

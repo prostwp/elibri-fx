@@ -4,6 +4,7 @@ import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/auth/ProfilePage';
 import { AdminPage } from './components/auth/AdminPage';
 import { MLLabPage } from './components/ml/MLLabPage';
+import { AlertsPage } from './components/alerts/AlertsPage';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { AppLayout } from './components/layout/AppLayout';
 
@@ -49,6 +50,14 @@ export const router = createHashRouter([
     element: (
       <AuthGuard>
         <MLLabPage />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: '/alerts',
+    element: (
+      <AuthGuard>
+        <AlertsPage />
       </AuthGuard>
     ),
   },

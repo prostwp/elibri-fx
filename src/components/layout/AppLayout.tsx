@@ -9,9 +9,22 @@ import { BinanceConnectModal } from '../editor/BinanceConnectModal';
 import { ToastContainer, toast } from '../ui/Toast';
 import { Onboarding } from '../ui/Onboarding';
 import { useFlowStore } from '../../stores/useFlowStore';
+import { useScenariosStore } from '../../stores/useScenariosStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 export function AppLayout() {
   const { saveCurrentStrategy, currentStrategyId, dirty } = useFlowStore();
+  const user = useAuthStore((s) => s.user);
+  const startPolling = useScenariosStore((s) => s.startPolling);
+  const stopPolling = useScenariosStore((s) => s.stopPolling);
+
+  // Keep active-scenarios cache fresh while the user is in the app.
+  // 30s poll — cheap enough to give near-realtime "Running" indicators.
+  useEffect(() => {
+    if (!user) return;
+    startPolling(30_000);
+    return () => stopPolling();
+  }, [user, startPolling, stopPolling]);
 
   // Keyboard shortcuts
   useEffect(() => {

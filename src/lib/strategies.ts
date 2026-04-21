@@ -14,6 +14,15 @@ export interface Strategy {
   selected_pair: string;
   created_at: string;
   updated_at: string;
+  // Patch 2C + Patch 3 fields (may be missing in older responses).
+  is_active?: boolean;
+  interval?: string;          // "5m" | "15m" | "1h" | "4h" | "1d"
+  risk_tier?: 'conservative' | 'balanced' | 'aggressive';
+  telegram_enabled?: boolean;
+  auto_execute?: boolean;
+  last_signal_bar_time?: number | null;
+  last_signal_direction?: 'buy' | 'sell' | null;
+  paused_until?: string | null;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T | null> {

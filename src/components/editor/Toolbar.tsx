@@ -4,11 +4,13 @@ import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
 import { useCryptoStore } from '../../stores/useCryptoStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useScenariosStore } from '../../stores/useScenariosStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useReactFlow } from '@xyflow/react';
 import { TEMPLATES, TEMPLATE_CATEGORIES, type TemplateCategory } from '../../lib/templates';
 import { StrategyListModal } from '../strategies/StrategyListModal';
 import { toast } from '../ui/Toast';
+import { Radio, Bell } from 'lucide-react';
 
 export function Toolbar() {
   const {
@@ -19,6 +21,8 @@ export function Toolbar() {
   const { status: cryptoStatus, setShowConnectModal: setShowCryptoModal } = useCryptoStore();
   const [strategiesOpen, setStrategiesOpen] = useState(false);
   const { profile, user } = useAuthStore();
+  const activeScenarios = useScenariosStore((s) => s.activeScenarios);
+  const activeCount = activeScenarios.length;
   const { signOut } = useAuth();
   const { fitView } = useReactFlow();
   const navigate = useNavigate();
@@ -101,6 +105,34 @@ export function Toolbar() {
             {saving ? '⏳' : dirty ? '💾' : '✓'}
           </button>
         )}
+
+        {/* Running scenarios chip — click opens Strategy modal where activate/stop lives */}
+        {activeCount > 0 && (
+          <button
+            onClick={() => setStrategiesOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all h-9"
+            title={`${activeCount} paper scenario(s) running — click to manage`}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <Radio className="h-3 w-3 text-emerald-400" />
+            <span className="text-[10px] font-semibold text-emerald-300 whitespace-nowrap">
+              {activeCount} running
+            </span>
+          </button>
+        )}
+
+        {/* Alerts shortcut */}
+        <a
+          href="#/alerts"
+          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md bg-white/[0.03] hover:bg-amber-500/10 border border-white/5 hover:border-amber-500/20 transition-all h-9 text-[10px] font-semibold text-gray-300 hover:text-amber-300"
+          title="Signal alerts history"
+        >
+          <Bell className="h-3 w-3" />
+          Alerts
+        </a>
 
         <div className="w-px h-5 bg-white/10 mx-1" />
 
