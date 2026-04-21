@@ -24,6 +24,19 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
     outputs: ['candles'],
     defaultData: { timeframe: 'H1' },
   },
+  // H3 fundamental recon (2026-04-23): newsFeed + economicCalendar are
+  // architecturally dead right now — graphEngine.ts:260-266 hardcodes signal=0
+  // for both, and no active template wires them in (templates.ts
+  // `_FOREX_TEMPLATES` is an archived/unused block).
+  //
+  // DECISION DEFERRED to a session with UI preview access: hiding them from
+  // the sidebar is a UX-visible change that should be eyeballed in the dev
+  // server. analyzeSentiment is already exported from finnhub.ts so if we
+  // later choose to wire these into graphEngine instead of hiding, that
+  // plumbing is one step closer.
+  //
+  // For crypto news/sentiment use `cryptoFundamental` (live backend pipeline).
+  // For macro events use the global macro blackout chip in Toolbar (Patch 3A).
   {
     type: 'newsFeed',
     label: 'News Feed',

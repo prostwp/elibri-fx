@@ -13,6 +13,8 @@ import { detectPatterns } from './chartPatterns';
 import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison } from './stockData';
 import { calcVolumeSpike, calcPriceDip, getCryptoIndicatorSignals } from './cryptoIndicators';
 import { useCryptoStore } from '../stores/useCryptoStore';
+// Patch 2N+1 H4: single source of truth for per-ticker recent events.
+import { EVENTS_DATA } from '../components/nodes/EventRepricingNode';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Risk-tier config — mirrors backend elibri-backend/internal/ml/risk_tiers.go.
@@ -487,18 +489,34 @@ export function evaluateGraph(
             ? incoming.reduce((s, i) => s + i.signal * i.weight, 0) / totalW
             : 0;
         }
-        // Boost/dampen based on event sentiment (hardcoded per ticker)
+        // Patch 2N+1 H4: derive event boost from the SAME EVENTS_DATA table
+        // the node renders. Previously graphEngine had an independent
+        // hardcoded `eventScores` dict that silently drifted whenever the
+        // UI table was edited — two sources of truth is one too many.
+        //
+        // Score: +1 per positive event, -1 per negative, 0 per neutral,
+        // then normalized by count. Identical rule to the `eventScore`
+        // computed for the badge inside EventRepricingNode.tsx so the UI
+        // "Positive / Negative / Neutral" label always matches the graph.
         const ticker7 = nodes.find(n => n.type === 'stockAnalysis')?.data?.ticker as string ?? 'SBER';
-        const eventScores: Record<string, number> = {
-          SBER: 0.6, GAZP: -0.5, LKOH: 0.5, YNDX: 0.7, GMKN: -0.3, NLMK: 0.2, ROSN: 0.4, MTSS: 0.2,
-        };
-        const eventBoost = eventScores[ticker7] ?? 0;
+        const events = EVENTS_DATA[ticker7]?.events ?? [];
+        const rawScore = events.reduce(
+          (s, e) => s + (e.impact === 'positive' ? 1 : e.impact === 'negative' ? -1 : 0),
+          0,
+        );
+        const eventBoost = events.length > 0
+          ? Math.max(-1, Math.min(1, rawScore / events.length))
+          : 0;
         signal = Math.max(-1, Math.min(1, signal + eventBoost * 0.3));
         indicators = [{
           name: 'Event Score',
           value: Math.round(eventBoost * 100),
           signal: eventBoost > 0.2 ? 'buy' : eventBoost < -0.2 ? 'sell' : 'neutral',
-          description: eventBoost > 0 ? 'Positive events' : eventBoost < 0 ? 'Negative events' : 'Neutral',
+          description: eventBoost > 0
+            ? `Positive events (${rawScore}/${events.length})`
+            : eventBoost < 0
+              ? `Negative events (${rawScore}/${events.length})`
+              : events.length > 0 ? 'Mixed events' : 'No recent events',
         }];
         break;
       }

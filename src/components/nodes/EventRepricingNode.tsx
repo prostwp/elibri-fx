@@ -4,10 +4,19 @@ import { useFlowStore } from '../../stores/useFlowStore';
 import { STOCKS_FUNDAMENTAL } from '../../lib/stockData';
 import type { NodeProps } from '@xyflow/react';
 
-// Recent events per ticker
-const EVENTS_DATA: Record<string, {
-  events: { date: string; type: string; title: string; impact: 'positive' | 'negative' | 'neutral'; delta?: string }[];
-}> = {
+// Recent events per ticker.
+// Exported so graphEngine can derive the same event score as this UI renders —
+// prior to Patch 2N+1 H4 the graph used its own hardcoded per-ticker scalar
+// which silently drifted if the table below was edited.
+export interface EventEntry {
+  date: string;
+  type: string;
+  title: string;
+  impact: 'positive' | 'negative' | 'neutral';
+  delta?: string;
+}
+
+export const EVENTS_DATA: Record<string, { events: EventEntry[] }> = {
   SBER: { events: [
     { date: '2025-03-28', type: 'Report', title: 'IFRS profit +15% YoY', impact: 'positive', delta: '+3.2%' },
     { date: '2025-03-15', type: 'Board decision', title: 'Dividend 33.3₽/share approved', impact: 'positive', delta: '+1.8%' },
