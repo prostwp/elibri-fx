@@ -46,6 +46,7 @@ export function MLLabPage() {
   const [paperTrades, setPaperTrades] = useState<any>(null);
   const [reloading, setReloading] = useState(false);
 
+  // Manual reload (event-handler context — safe to call setState sync here).
   const refresh = async () => {
     setLoading(true);
     const [m, b, p] = await Promise.all([
@@ -64,11 +65,31 @@ export function MLLabPage() {
   };
 
   useEffect(() => {
-    refresh();
+    let cancelled = false;
+
+    // Inlined fetch so no setState runs synchronously inside the effect body.
+    // `loading` already defaults to true, so UI shows the spinner on first render.
+    const doFetch = () => {
+      Promise.all([listMLModels(), fetchBacktestSummary(), fetchPaperTrades()])
+        .then(([m, b, p]) => {
+          if (cancelled) return;
+          if (m) {
+            setModels(m.models as ModelInfo[]);
+            setThresholds((m as any).thresholds ?? []);
+            setLoadedAt(m.health?.loaded_at ?? '');
+          }
+          setBacktest(b);
+          setPaperTrades(p);
+          setLoading(false);
+        })
+        .catch(() => { if (!cancelled) setLoading(false); });
+    };
+
+    doFetch();
     // Poll every 30s so the page reflects fresh training/backtest output
     // without manual reload.
-    const id = setInterval(refresh, 30000);
-    return () => clearInterval(id);
+    const id = setInterval(doFetch, 30000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   const handleReload = async () => {

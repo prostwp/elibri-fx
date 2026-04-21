@@ -45,7 +45,7 @@ const EVENTS_DATA: Record<string, {
 export function EventRepricingNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   const ticker = useMemo(() => {
     const sn = nodes.find(n => n.type === 'stockAnalysis');

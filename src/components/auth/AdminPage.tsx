@@ -16,6 +16,8 @@ export function AdminPage() {
 
   const isAdmin = currentUser?.role === 'admin';
 
+  // Manual reload (e.g. after reset). Sets the spinner because this runs
+  // from an event handler, not an effect — so it's safe to call setState sync.
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -28,8 +30,24 @@ export function AdminPage() {
     setLoading(false);
   };
 
+  // Initial fetch — inline the promise chain so no setState runs synchronously
+  // inside the effect body. `loading` already defaults to true so the UI
+  // still shows the spinner on first render.
   useEffect(() => {
-    if (isAdmin) load();
+    if (!isAdmin) return;
+    let cancelled = false;
+    adminListUsers()
+      .then(list => {
+        if (cancelled) return;
+        setUsers(list);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError('Failed to load users');
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [isAdmin]);
 
   const handleReset = async (userId: string) => {

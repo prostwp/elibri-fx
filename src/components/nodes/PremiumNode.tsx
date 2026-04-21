@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BaseNode } from './BaseNode';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useMT5Store } from '../../stores/useMT5Store';
@@ -10,7 +10,7 @@ import type { NodeProps } from '@xyflow/react';
 export function ChartPatternNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const selectedPair = useFlowStore(s => s.selectedPair);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   const liveCandles = useMT5Store(s => s.candles);
   const mt5Status = useMT5Store(s => s.status);
@@ -51,11 +51,16 @@ export function ChartPatternNode({ id, data }: NodeProps) {
 // ─── Sentiment Analysis ─────────────────────────
 export function SentimentNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const sensitivity = (data.sensitivity as string) ?? 'balanced';
 
-  // Simulated sentiment (deterministic from time, not random)
-  const seed = Math.floor(Date.now() / 300000); // changes every 5 min
+  // Simulated sentiment (deterministic from time, not random).
+  // Seed changes every 5 min; stored in state + refreshed via interval so render stays pure.
+  const [seed, setSeed] = useState<number>(() => Math.floor(Date.now() / 300000));
+  useEffect(() => {
+    const interval = setInterval(() => setSeed(Math.floor(Date.now() / 300000)), 300_000);
+    return () => clearInterval(interval);
+  }, []);
   const fearGreed = ((seed * 7 + 13) % 100);
   const socialBuzz = ((seed * 11 + 29) % 100);
   const retailSentiment = ((seed * 3 + 47) % 100);
@@ -108,7 +113,7 @@ export function SentimentNode({ id, data }: NodeProps) {
 export function FundamentalNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const selectedPair = useFlowStore(s => s.selectedPair);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   // Macro data based on currency pair
   const macroData = useMemo(() => {
@@ -171,7 +176,7 @@ export function FundamentalNode({ id, data }: NodeProps) {
 // ─── Risk Profile (Psychology) ──────────────────
 export function PsychProfileNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const profile = (data.profile as string) ?? 'moderate';
 
   const profiles: Record<string, { maxRisk: string; maxTrades: string; style: string; color: string }> = {

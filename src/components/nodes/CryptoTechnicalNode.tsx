@@ -27,7 +27,7 @@ export function CryptoTechnicalNode({ id, data }: NodeProps) {
   );
   const selectedKey = selected.join('|');
   const interval = (data.interval as string) || '1h';
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   const [signals, setSignals] = useState<IndicatorResult[]>([]);
   const [loading, setLoading] = useState(false);

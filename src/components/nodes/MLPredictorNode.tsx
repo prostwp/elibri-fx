@@ -11,7 +11,7 @@ const FEATURES = ['RSI', 'MACD', 'Volume', 'Volatility', 'Momentum', 'BB Positio
 export function MLPredictorNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const selectedPair = useFlowStore(s => s.selectedPair);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   const mlPredictions = useCryptoStore(s => s.mlPredictions);
   const mlStatus = useCryptoStore(s => s.mlStatus);

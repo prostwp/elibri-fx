@@ -111,6 +111,9 @@ export interface MLPredictionV2 {
   };
   features?: Record<string, number>;
   fallback_reason?: string;
+  // ─── Patch 2C: volatility gate + risk tier echo ───
+  vol_gate?: string;       // "blocked_low_vol" if atr_norm < min_vol_pct
+  risk_tier?: string;      // echo of applied tier (conservative/balanced/aggressive)
 }
 
 export async function predictMLv2(
@@ -118,15 +121,18 @@ export async function predictMLv2(
   interval: string,
   tradingStyle: 'scalp' | 'day' | 'swing' | 'position' = 'swing',
   source: 'binance' | 'moex' = 'binance',
+  riskTier?: string,
 ): Promise<MLPredictionV2 | null> {
+  const body: Record<string, unknown> = {
+    symbol,
+    interval,
+    trading_style: tradingStyle,
+    source,
+  };
+  if (riskTier) body.risk_tier = riskTier;
   return backendFetch<MLPredictionV2>(`/ml/predict`, {
     method: 'POST',
-    body: JSON.stringify({
-      symbol,
-      interval,
-      trading_style: tradingStyle,
-      source,
-    }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -139,6 +145,11 @@ export interface MLPredictMultiResponse {
     alignment: number;        // 0..1
     high_quality: boolean;    // true = all intervals agree + HC
     avg_confidence: number;
+    // ─── Patch 2C: regime label + block flag + tier echo ───
+    label?: 'trend_aligned' | 'mean_reversion' | 'random';
+    label_reason?: string;
+    blocked?: boolean;
+    risk_tier?: string;
   };
 }
 
@@ -146,15 +157,18 @@ export async function predictMLv2Multi(
   symbol: string,
   intervals: string[] = ['1h', '4h', '1d'],
   tradingStyle: 'scalp' | 'day' | 'swing' | 'position' = 'swing',
+  riskTier?: string,
 ): Promise<MLPredictMultiResponse | null> {
+  const body: Record<string, unknown> = {
+    symbol,
+    intervals,
+    trading_style: tradingStyle,
+    source: 'binance',
+  };
+  if (riskTier) body.risk_tier = riskTier;
   return backendFetch<MLPredictMultiResponse>(`/ml/predict/multi`, {
     method: 'POST',
-    body: JSON.stringify({
-      symbol,
-      intervals,
-      trading_style: tradingStyle,
-      source: 'binance',
-    }),
+    body: JSON.stringify(body),
   });
 }
 

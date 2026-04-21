@@ -85,7 +85,18 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   },
 
   addNode: (node) => {
-    set({ nodes: [...get().nodes, node], dirty: true });
+    // Inject per-type default data (merged under existing data, so caller-supplied
+    // values win). Currently only RiskManager needs a default riskTier so its
+    // tier-aware sizing works on the very first render. Covers both drag-from-
+    // sidebar and programmatic spawns.
+    const typeDefaults: Record<string, Record<string, unknown>> = {
+      riskManager: { riskTier: 'balanced' },
+    };
+    const extra = node.type ? typeDefaults[node.type] : undefined;
+    const enriched = extra
+      ? { ...node, data: { ...extra, ...(node.data ?? {}) } }
+      : node;
+    set({ nodes: [...get().nodes, enriched], dirty: true });
     scheduleAutosave(get);
   },
 

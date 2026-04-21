@@ -4,14 +4,14 @@ import type { NodeProps } from '@xyflow/react';
 
 export function RiskCapNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const maxDailyLoss = (data.maxDailyLoss as number) || 500;
   const maxTrades = (data.maxTradesPerDay as number) || 10;
   const maxLotSize = (data.maxPositionSize as number) || 0.5;
 
-  // Mock current usage
-  const usedLoss = 180;
-  const usedTrades = 3;
+  // Wired to tier.maxTradesPerDay in future scenario_runner; demo defaults for now
+  const usedLoss = (data.usedLoss as number) ?? 0;
+  const usedTrades = (data.usedTrades as number) ?? 0;
   const lossPercent = Math.round((usedLoss / maxDailyLoss) * 100);
   const isWarning = lossPercent > 80;
 

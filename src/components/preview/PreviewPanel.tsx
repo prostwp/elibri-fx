@@ -712,17 +712,24 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
   nodes: Node[];
   edges: Edge[];
 }) {
+  // Track the most recent backtest result alongside the deps that produced it.
+  // Loading state is *derived* from a ref so we don't need to call setState
+  // synchronously inside useEffect (which trips react-hooks/set-state-in-effect).
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
-  const [backtestLoading, setBacktestLoading] = useState(false);
+  const [backtestLoadedKey, setBacktestLoadedKey] = useState<string | null>(null);
+  const currentKey = `${fund.ticker}:${nodes.length}:${edges.length}`;
+  const backtestLoading = backtestLoadedKey !== currentKey;
 
-  // Auto-run backtest when nodes/ticker change
+  // Auto-run backtest when nodes/ticker change.
   useEffect(() => {
-    setBacktestLoading(true);
+    let cancelled = false;
     runBacktest(nodes, edges, fund.ticker).then(result => {
+      if (cancelled) return;
       setBacktestResult(result);
-      setBacktestLoading(false);
+      setBacktestLoadedKey(currentKey);
     });
-  }, [nodes, edges, fund.ticker]);
+    return () => { cancelled = true; };
+  }, [nodes, edges, fund.ticker, currentKey]);
   // Portfolio score derived from graph engine (weights affect this!)
   // finalScore is -1..+1, convert to 0..100
   const graphScore = graphResult.finalScore;
@@ -744,7 +751,7 @@ function FundamentalView({ fund, graphResult, quote, stress, sector, onRefresh, 
               <span className="text-lg font-black text-white">{fund.currentPrice} ₽</span>
             )}
             <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-              fund.reportType === 'МСФО' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
+              fund.reportType === 'IFRS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
             }`}>{fund.reportType}</span>
           </div>
           {quote && (

@@ -16,6 +16,7 @@ import { BaseNode } from './BaseNode';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useCryptoStore } from '../../stores/useCryptoStore';
 import { predictMLv2, predictMLv2Multi, type MLPredictionV2, type MLPredictMultiResponse } from '../../lib/backendClient';
+import { CRYPTO_PAIRS } from '../../lib/demoData';
 import type { NodeProps } from '@xyflow/react';
 
 const SHORT_FEATURE_LABEL: Record<string, string> = {
@@ -53,7 +54,7 @@ const SHORT_FEATURE_LABEL: Record<string, string> = {
 };
 
 function isCryptoPair(pair: string): boolean {
-  return pair.endsWith('USDT') || pair.endsWith('BUSD') || pair.endsWith('USDC');
+  return (CRYPTO_PAIRS as readonly string[]).includes(pair);
 }
 
 // TradingStyle string comes from upstream node; default is swing.
@@ -77,7 +78,7 @@ export function CryptoMLNode({ id, data }: NodeProps) {
   const setMLPrediction = useCryptoStore(s => s.setMLPrediction);
 
   const pair = isCryptoPair(selectedPair) ? selectedPair : 'BTCUSDT';
-  const weight = (data.weight as number) ?? 0.7;
+  const weight = (data.weight as number) ?? 1.0;
   const interval = resolveInterval(nodes);
   const tradingStyle = resolveTradingStyle(nodes);
 
@@ -109,7 +110,18 @@ export function CryptoMLNode({ id, data }: NodeProps) {
             timeframe: primary.timeframe,
             features: primary.features ?? {},
           });
-          updateNodeData(id, { lastPredictedAt: primary.predicted_at, mtfConsensus: multi.consensus });
+          updateNodeData(id, {
+            lastPredictedAt: primary.predicted_at,
+            direction: primary.direction,
+            confidence: Math.round(primary.confidence),
+            priceTarget: primary.price_target,
+            timeframe: primary.timeframe,
+            features: primary.features ?? {},
+            vol_gate: primary.vol_gate,
+            risk_tier: primary.risk_tier,
+            consensus: multi.consensus,
+            mtfConsensus: multi.consensus,
+          });
         }
       } else {
         // Fallback: single-TF.
@@ -123,10 +135,19 @@ export function CryptoMLNode({ id, data }: NodeProps) {
           timeframe: r.timeframe,
           features: r.features ?? {},
         });
-        updateNodeData(id, { lastPredictedAt: r.predicted_at });
+        updateNodeData(id, {
+          lastPredictedAt: r.predicted_at,
+          direction: r.direction,
+          confidence: Math.round(r.confidence),
+          priceTarget: r.price_target,
+          timeframe: r.timeframe,
+          features: r.features ?? {},
+          vol_gate: r.vol_gate,
+          risk_tier: r.risk_tier,
+        });
       }
-    } catch (e: any) {
-      setErr(String(e?.message ?? e));
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -236,16 +257,54 @@ export function CryptoMLNode({ id, data }: NodeProps) {
                 </div>
               );
             })}
-            {mtf.consensus.high_quality && (
+            {/* Patch 2C: regime label + block badges */}
+            {mtf.consensus.blocked && (
+              <div
+                className="text-[8px] text-gray-400 text-center bg-white/5 border border-white/10 rounded px-1.5 py-0.5 mt-1"
+                title={mtf.consensus.label_reason ?? 'No clear setup — waiting for movement'}
+              >
+                — no setup{mtf.consensus.label_reason ? ` · ${mtf.consensus.label_reason}` : ''}
+              </div>
+            )}
+            {!mtf.consensus.blocked && mtf.consensus.label === 'trend_aligned' && (
+              <div className="text-[8px] text-emerald-300 text-center bg-emerald-500/10 rounded px-1.5 py-0.5 mt-1">
+                ⚡ TREND ALIGNED{mtf.consensus.label_reason ? ` · ${mtf.consensus.label_reason}` : ''}
+              </div>
+            )}
+            {!mtf.consensus.blocked && mtf.consensus.label === 'mean_reversion' && (
+              <div className="text-[8px] text-blue-300 text-center bg-blue-500/10 rounded px-1.5 py-0.5 mt-1">
+                ↻ MEAN REVERSION{mtf.consensus.label_reason ? ` · ${mtf.consensus.label_reason}` : ''}
+              </div>
+            )}
+            {!mtf.consensus.blocked && mtf.consensus.label === 'random' && (
+              <div className="text-[8px] text-amber-300 text-center bg-amber-500/10 rounded px-1.5 py-0.5 mt-1">
+                ⚠ RANDOM · low regime quality
+              </div>
+            )}
+            {/* Fallback for backend without label (pre-Patch 2C) */}
+            {!mtf.consensus.blocked && !mtf.consensus.label && mtf.consensus.high_quality && (
               <div className="text-[8px] text-emerald-300 text-center bg-emerald-500/10 rounded px-1.5 py-0.5 mt-1">
                 ⚡ MTF ALIGNED · all TFs aligned
               </div>
             )}
-            {mtf.consensus.direction === 'mixed' && (
+            {!mtf.consensus.blocked && !mtf.consensus.label && mtf.consensus.direction === 'mixed' && (
               <div className="text-[8px] text-amber-300 text-center bg-amber-500/10 rounded px-1.5 py-0.5 mt-1">
                 ⚠ TFs conflict · do not trade
               </div>
             )}
+            {/* Risk tier echo */}
+            {mtf.consensus.risk_tier && (
+              <div className="text-[8px] text-purple-300/70 text-center mt-0.5">
+                tier: {mtf.consensus.risk_tier}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Patch 2C: volatility gate badge (independent of MTF block) */}
+        {result?.vol_gate === 'blocked_low_vol' && (
+          <div className="text-[8px] text-red-300 text-center bg-red-500/15 border border-red-500/30 rounded px-1.5 py-0.5">
+            🚫 Vol gate · low volatility, no edge
           </div>
         )}
 

@@ -108,9 +108,11 @@ export function calcTradeSetup(
   candles: OHLCVCandle[],
   indicators: IndicatorResult[],
   selectedIndicators: string[],
-): { entry: number; stopLoss: number; takeProfit: number; riskReward: number } {
+  riskPct: number = 0.005,
+  accountBalance: number = 10000,
+): { entry: number; stopLoss: number; takeProfit: number; riskReward: number; suggestedVolume: number } {
   const lastPrice = candles[candles.length - 1]?.close ?? 0;
-  if (lastPrice === 0) return { entry: 0, stopLoss: 0, takeProfit: 0, riskReward: 0 };
+  if (lastPrice === 0) return { entry: 0, stopLoss: 0, takeProfit: 0, riskReward: 0, suggestedVolume: 0 };
 
   const atr = calcATR(candles);
   const { support, resistance } = findSupportResistance(candles);
@@ -169,6 +171,14 @@ export function calcTradeSetup(
   const reward = Math.abs(takeProfit - entry);
   const riskReward = risk > 0 ? Math.round((reward / risk) * 10) / 10 : 0;
 
+  // Position sizing: risk_usd / (atr × sl_multiplier)
+  const slMultiplier = 1.5;
+  const riskUsd = accountBalance * riskPct;
+  const atrSlDistance = atr * slMultiplier;
+  const suggestedVolume = atrSlDistance > 0
+    ? Math.round((riskUsd / atrSlDistance) * 100) / 100
+    : 0;
+
   // Round based on price magnitude
   const decimals = lastPrice > 100 ? 2 : 5;
   const factor = Math.pow(10, decimals);
@@ -178,6 +188,7 @@ export function calcTradeSetup(
     stopLoss: Math.round(stopLoss * factor) / factor,
     takeProfit: Math.round(takeProfit * factor) / factor,
     riskReward,
+    suggestedVolume,
   };
 }
 

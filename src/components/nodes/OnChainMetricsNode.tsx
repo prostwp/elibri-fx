@@ -55,7 +55,7 @@ function getMetricValue(key: string): { value: number; signal: 'buy' | 'sell' | 
 
 export function OnChainMetricsNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const selectedMetrics = (data.metrics as string[]) || ['whale_activity', 'exchange_inflow'];
 
   const toggleMetric = (key: string) => {

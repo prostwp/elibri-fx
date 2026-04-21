@@ -14,7 +14,9 @@
 import { useEffect, useState } from 'react';
 import { BaseNode } from './BaseNode';
 import { useFlowStore } from '../../stores/useFlowStore';
+import { TIER_CONFIG, type RiskTierKey } from '../../lib/graphEngine';
 import type { NodeProps } from '@xyflow/react';
+import type { RiskTier } from '../../types/nodes';
 
 type TradingStyleKey = 'scalp' | 'day' | 'swing' | 'position';
 
@@ -32,6 +34,21 @@ const STYLE_DEFAULTS: Record<TradingStyleKey, SuggestedRisk> = {
   position: { riskPct: 1.5,  slMult: 2.0, tpMult: 4.0, label: 'Position' },
 };
 
+// Patch 2E: descriptions no longer reference "min conf" — HC threshold
+// (per-TF from the model) is the single confidence filter. Tier knobs
+// only govern vol, allowed labels, rate limit, and sizing.
+const TIER_META: Record<RiskTier, { label: string; description: string }> = {
+  conservative: { label: 'Conservative', description: '0.25% risk/trade, strict vol-filter, trend-aligned only, up to 3 trades/day' },
+  balanced:     { label: 'Balanced',     description: '0.5% risk/trade, standard vol-filter, trend + mean-reversion, up to 7 trades/day' },
+  aggressive:   { label: 'Aggressive',   description: '1.0% risk/trade, soft vol-filter, any signal (except random), up to 20 trades/day' },
+};
+
+function tierCfg(tier: RiskTier) {
+  const cfg = TIER_CONFIG[tier as RiskTierKey];
+  const meta = TIER_META[tier];
+  return { ...cfg, ...meta };
+}
+
 function resolveStyle(nodes: any[]): TradingStyleKey {
   const ts = nodes.find(n => n.type === 'tradingStyle');
   const v = ts?.data?.tradingStyle;
@@ -42,10 +59,56 @@ function resolveStyle(nodes: any[]): TradingStyleKey {
 export function RiskManagerNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const edges = useFlowStore(s => s.edges);
+  const weight = (data.weight as number) ?? 1.0;
 
   const style = resolveStyle(nodes);
   const suggested = STYLE_DEFAULTS[style];
+
+  // Risk tier (Conservative / Balanced / Aggressive). Default: balanced.
+  const riskTier = ((data.riskTier as RiskTier) ?? 'balanced') as RiskTier;
+  const tier = tierCfg(riskTier);
+
+  // ── Detect upstream backend block (CryptoML vol_gate / consensus.blocked) ──
+  // Walk incoming edges, find any source node carrying a hard-block flag.
+  const incomingSourceIds = edges
+    .filter(e => e.target === id)
+    .map(e => e.source);
+  const blockedUpstream = nodes.find(n => {
+    if (!incomingSourceIds.includes(n.id)) return false;
+    const nd = n.data as Record<string, unknown> | undefined;
+    if (!nd) return false;
+    const consensus = nd.consensus as { blocked?: boolean } | undefined;
+    const volGate = nd.vol_gate as string | undefined;
+    return consensus?.blocked === true || volGate === 'blocked_low_vol';
+  });
+  const blockReason = (() => {
+    if (!blockedUpstream) return null;
+    const nd = blockedUpstream.data as Record<string, unknown>;
+    const consensus = nd.consensus as { blocked?: boolean; label_reason?: string } | undefined;
+    const volGate = nd.vol_gate as string | undefined;
+    if (volGate === 'blocked_low_vol') return 'low volatility (blocked_low_vol)';
+    if (consensus?.blocked) return consensus.label_reason ?? 'consensus blocked';
+    return 'upstream block';
+  })();
+
+  // Position size suggestion. Requires atr + accountBalance in node data
+  // (wired via Technical node / graph engine). Falls back to stored equity.
+  const atr = (data.atr as number | undefined) ?? undefined;
+  const accountBalance =
+    (data.accountBalance as number | undefined) ??
+    (data.equity as number | undefined);
+
+  let positionLine = '—';
+  if (atr && atr > 0 && accountBalance && accountBalance > 0) {
+    // Tier-aware sizing: risk$ / (ATR × SL_mult).
+    const riskPct = tier.riskPerTradePct;       // fraction (0.005 = 0.5%)
+    const slMult = tier.slAtrMult;               // e.g. 1.5
+    const riskUsd = accountBalance * riskPct;
+    const slDistance = atr * slMult;
+    const volumeUsd = slDistance > 0 ? riskUsd / slDistance : 0;
+    positionLine = `Volume: $${volumeUsd.toFixed(2)} | SL: ${slMult}×ATR (${(riskPct * 100).toFixed(2)}% risk)`;
+  }
 
   // Stored values (undefined = use AI suggestion).
   const equity = (data.equity as number) ?? 10000;
@@ -115,9 +178,68 @@ export function RiskManagerNode({ id, data }: NodeProps) {
           <span className="text-purple-300 text-[10px]">Position Sizer Active</span>
         </div>
 
+        {/* Risk Tier selector */}
+        <div className="space-y-1 border-t border-white/5 pt-1.5">
+          <div className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">
+            Risk Tier
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {(['conservative', 'balanced', 'aggressive'] as RiskTier[]).map((t) => {
+              const active = riskTier === t;
+              const activeClass =
+                t === 'conservative'
+                  ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40'
+                  : t === 'balanced'
+                  ? 'bg-indigo-500/20 text-indigo-200 border-indigo-400/40'
+                  : 'bg-red-500/20 text-red-200 border-red-400/40';
+              return (
+                <button
+                  key={t}
+                  onClick={() => updateNodeData(id, { riskTier: t })}
+                  className={`text-[9px] py-0.5 rounded border transition ${
+                    active
+                      ? activeClass
+                      : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                  }`}
+                  title={TIER_META[t].description}
+                >
+                  {TIER_META[t].label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="text-[9px] text-gray-500 leading-snug">
+            {tier.description}
+          </div>
+        </div>
+
+        {/* Position size suggestion OR upstream block notice */}
+        {blockedUpstream ? (
+          <div className="border-t border-white/5 pt-1.5">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/5 text-gray-300 border border-white/10">
+                No Position
+              </span>
+              <span className="text-[9px] text-gray-400">waiting for setup</span>
+            </div>
+            <div className="text-[9px] text-gray-400 leading-snug">
+              {blockReason}
+            </div>
+          </div>
+        ) : (
+          <div className="border-t border-white/5 pt-1.5">
+            <div className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">
+              Position Size Suggestion
+            </div>
+            <div className="text-[9px] font-mono text-purple-200 mt-0.5">
+              {positionLine}
+            </div>
+          </div>
+        )}
+
         {/* Role */}
-        <div className="text-[10px] text-gray-400 leading-snug">
-          Computes position size, SL and TP via ATR. Dampens signals on upstream conflict.
+        <div className="text-[10px] text-gray-400 leading-snug border-t border-white/5 pt-1.5">
+          Tier-sized risk (risk$ / ATR × SL_mult). Respects backend vol gate + MTF consensus.
         </div>
 
         {/* AI Suggested panel (when not customized) */}

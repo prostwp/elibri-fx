@@ -20,9 +20,10 @@ export const TEMPLATE_CATEGORIES: { key: TemplateCategory; label: string; icon: 
 
 const edgeStyle = { stroke: '#6366f1', strokeWidth: 2 };
 
-// Archived forex templates kept for reference
-// @ts-ignore unused archive
-const _FOREX_TEMPLATES: Template[] = [
+// Archived forex templates kept for reference. Cast erases `category`
+// requirement since these archived entries predate the field.
+// @ts-expect-error unused archive
+const _FOREX_TEMPLATES = [
   {
     name: 'Safe Start',
     description: 'Beginner-friendly with explanations',
@@ -117,22 +118,22 @@ export const TEMPLATES: Template[] = [
   // ─── T-Invest Fundamental ───────────────────────
   {
     name: 'T-Invest Fundamental',
-    description: 'Полный фундаментальный анализ акции для Т-Инвестиций',
+    description: 'Full fundamental stock analysis for T-Invest accounts',
     icon: '🏛️',
     segment: 'pro' as SegmentMode,
     category: 'stocks' as TemplateCategory,
     nodes: [
       // Col 1: Stock Analyzer (source)
-      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 350 }, data: { ticker: 'SBER', weight: 0.8 } },
+      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 350 }, data: { ticker: 'SBER', weight: 1.0 } },
       // Col 2: First analysis layer
-      { id: 'rs1', type: 'reportSelector', position: { x: 500, y: 0 }, data: { weight: 0.3 } },
-      { id: 'cf1', type: 'cashFlow', position: { x: 500, y: 380 }, data: { weight: 0.7 } },
-      { id: 'da1', type: 'debtAnalysis', position: { x: 500, y: 760 }, data: { weight: 0.6 } },
+      { id: 'rs1', type: 'reportSelector', position: { x: 500, y: 0 }, data: { weight: 1.0 } },
+      { id: 'cf1', type: 'cashFlow', position: { x: 500, y: 380 }, data: { weight: 1.0 } },
+      { id: 'da1', type: 'debtAnalysis', position: { x: 500, y: 760 }, data: { weight: 1.0 } },
       // Col 3: Second analysis layer
-      { id: 'pf1', type: 'profitability', position: { x: 1000, y: 0 }, data: { weight: 0.7 } },
-      { id: 'sc1', type: 'sectorCompare', position: { x: 1000, y: 380 }, data: { weight: 0.5 } },
+      { id: 'pf1', type: 'profitability', position: { x: 1000, y: 0 }, data: { weight: 1.0 } },
+      { id: 'sc1', type: 'sectorCompare', position: { x: 1000, y: 380 }, data: { weight: 1.0 } },
       // Col 3.5: Trading Style
-      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 760 }, data: { tradingStyle: 'swing', weight: 0.8 } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 760 }, data: { tradingStyle: 'swing', weight: 1.0 } },
       // Col 4: Output
       { id: 'ps1', type: 'portfolioScore', position: { x: 1500, y: 300 }, data: { weight: 1.0 } },
     ],
@@ -155,16 +156,16 @@ export const TEMPLATES: Template[] = [
   // ─── Dividend Capture ─────────────────────────
   {
     name: 'Dividend Capture',
-    description: 'Отбор акций по дивидендной доходности',
+    description: 'Screen stocks by dividend yield',
     icon: '💎',
     segment: 'pro' as SegmentMode,
     category: 'stocks' as TemplateCategory,
     nodes: [
-      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'LKOH', weight: 0.7 } },
-      { id: 'dc1', type: 'dividendCapture', position: { x: 500, y: 0 }, data: { weight: 0.9 } },
-      { id: 'cf1', type: 'cashFlow', position: { x: 500, y: 380 }, data: { weight: 0.6 } },
-      { id: 'pf1', type: 'profitability', position: { x: 1000, y: 0 }, data: { weight: 0.5 } },
-      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 380 }, data: { tradingStyle: 'position', weight: 0.7 } },
+      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'LKOH', weight: 1.0 } },
+      { id: 'dc1', type: 'dividendCapture', position: { x: 500, y: 0 }, data: { weight: 1.0 } },
+      { id: 'cf1', type: 'cashFlow', position: { x: 500, y: 380 }, data: { weight: 1.0 } },
+      { id: 'pf1', type: 'profitability', position: { x: 1000, y: 0 }, data: { weight: 1.0 } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 380 }, data: { tradingStyle: 'position', weight: 1.0 } },
       { id: 'ps1', type: 'portfolioScore', position: { x: 1500, y: 180 }, data: { weight: 1.0 } },
     ],
     edges: [
@@ -181,17 +182,17 @@ export const TEMPLATES: Template[] = [
   // ─── Event Repricing ────────────────────────
   {
     name: 'Event Repricing',
-    description: 'Переоценка после отчётов и корп. событий',
+    description: 'Repricing after earnings and corporate events',
     icon: '📰',
     segment: 'pro' as SegmentMode,
     category: 'stocks' as TemplateCategory,
     nodes: [
-      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'SBER', weight: 0.7 } },
-      { id: 'er1', type: 'eventRepricing', position: { x: 500, y: 0 }, data: { weight: 0.9 } },
-      { id: 'rs1', type: 'reportSelector', position: { x: 500, y: 400 }, data: { weight: 0.3 } },
-      { id: 'sc1', type: 'sectorCompare', position: { x: 1000, y: 0 }, data: { weight: 0.6 } },
-      { id: 'da1', type: 'debtAnalysis', position: { x: 1000, y: 380 }, data: { weight: 0.5 } },
-      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 700 }, data: { tradingStyle: 'swing', weight: 0.7 } },
+      { id: 'sa1', type: 'stockAnalysis', position: { x: 0, y: 200 }, data: { ticker: 'SBER', weight: 1.0 } },
+      { id: 'er1', type: 'eventRepricing', position: { x: 500, y: 0 }, data: { weight: 1.0 } },
+      { id: 'rs1', type: 'reportSelector', position: { x: 500, y: 400 }, data: { weight: 1.0 } },
+      { id: 'sc1', type: 'sectorCompare', position: { x: 1000, y: 0 }, data: { weight: 1.0 } },
+      { id: 'da1', type: 'debtAnalysis', position: { x: 1000, y: 380 }, data: { weight: 1.0 } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 1000, y: 700 }, data: { tradingStyle: 'swing', weight: 1.0 } },
       { id: 'ps1', type: 'portfolioScore', position: { x: 1500, y: 250 }, data: { weight: 1.0 } },
     ],
     edges: [
@@ -209,18 +210,18 @@ export const TEMPLATES: Template[] = [
   // ─── Crypto Swing ──────────────────────────────
   {
     name: 'Crypto Swing',
-    description: 'Свинг крипта 2-14 дней: технический анализ 4h + ML прогноз + risk manager',
+    description: 'Crypto swing 2-14 days: 4h technical analysis + ML forecast + risk manager',
     icon: '₿',
     segment: 'pro' as SegmentMode,
     category: 'crypto' as TemplateCategory,
     nodes: [
       { id: 'ca1', type: 'cryptoAsset', position: { x: 0, y: 420 }, data: { pair: 'BTCUSDT' } },
-      { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: -40 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'EMA'], interval: '4h', weight: 0.7 } },
-      { id: 'cm1', type: 'cryptoFundamental', position: { x: 380, y: 340 }, data: { categories: ['macro', 'geopolitics', 'regulation', 'crypto', 'social'], hours: 24, weight: 0.6 } },
-      { id: 'ts1', type: 'tradingStyle', position: { x: 380, y: 820 }, data: { tradingStyle: 'swing', weight: 0.8 } },
-      { id: 'ml1', type: 'cryptoML', position: { x: 860, y: 0 }, data: { weight: 0.8 } },
-      { id: 'ta1', type: 'tradingAnalyst', position: { x: 860, y: 420 }, data: { weight: 0.8 } },
-      { id: 'rm1', type: 'riskManager', position: { x: 860, y: 820 }, data: { weight: 0.7 } },
+      { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: -40 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'EMA'], interval: '4h', weight: 1.0 } },
+      { id: 'cm1', type: 'cryptoFundamental', position: { x: 380, y: 340 }, data: { categories: ['macro', 'geopolitics', 'regulation', 'crypto', 'social'], hours: 24, weight: 1.0 } },
+      { id: 'ts1', type: 'tradingStyle', position: { x: 380, y: 820 }, data: { tradingStyle: 'swing', weight: 1.0 } },
+      { id: 'ml1', type: 'cryptoML', position: { x: 860, y: 0 }, data: { weight: 1.0 } },
+      { id: 'ta1', type: 'tradingAnalyst', position: { x: 860, y: 420 }, data: { weight: 1.0 } },
+      { id: 'rm1', type: 'riskManager', position: { x: 860, y: 820 }, data: { weight: 1.0 } },
       { id: 'db1', type: 'dashboard', position: { x: 1360, y: 420 }, data: {} },
     ],
     edges: [
@@ -255,10 +256,10 @@ export const TEMPLATES: Template[] = [
     category: 'crypto' as TemplateCategory,
     nodes: [
       { id: 'ca1', type: 'cryptoAsset', position: { x: 0, y: 280 }, data: { pair: 'SOLUSDT' } },
-      { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: 0 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'ATR'], interval: '1h', weight: 0.6 } },
-      { id: 'cs1', type: 'cryptoScanner', position: { x: 380, y: 320 }, data: { scanMode: ['volume_spike', 'rsi_dip', 'price_dip'], thresholds: { volumeMultiplier: 2.5, rsiOversold: 30, dipPercent: 5 }, weight: 0.8 } },
-      { id: 'cm1', type: 'cryptoFundamental', position: { x: 760, y: 160 }, data: { categories: ['crypto', 'regulation', 'adoption', 'social'], hours: 24, weight: 0.7 } },
-      { id: 'rc1', type: 'riskCap', position: { x: 760, y: 480 }, data: { maxDailyLoss: 200, maxPositionSize: 0.2, maxTradesPerDay: 5, weight: 0.8 } },
+      { id: 'ct1', type: 'cryptoTechnical', position: { x: 380, y: 0 }, data: { indicators: ['RSI', 'MACD', 'Bollinger Bands', 'ATR'], interval: '1h', weight: 1.0 } },
+      { id: 'cs1', type: 'cryptoScanner', position: { x: 380, y: 320 }, data: { scanMode: ['volume_spike', 'rsi_dip', 'price_dip'], thresholds: { volumeMultiplier: 2.5, rsiOversold: 30, dipPercent: 5 }, weight: 1.0 } },
+      { id: 'cm1', type: 'cryptoFundamental', position: { x: 760, y: 160 }, data: { categories: ['crypto', 'regulation', 'adoption', 'social'], hours: 24, weight: 1.0 } },
+      { id: 'rc1', type: 'riskCap', position: { x: 760, y: 480 }, data: { maxDailyLoss: 200, maxPositionSize: 0.2, maxTradesPerDay: 5, weight: 1.0 } },
       { id: 'db1', type: 'dashboard', position: { x: 1140, y: 280 }, data: {} },
     ],
     edges: [

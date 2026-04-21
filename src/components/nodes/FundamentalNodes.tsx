@@ -28,7 +28,7 @@ function useSelectedTicker(nodes: { id: string; type?: string; data: Record<stri
 export function ReportSelectorNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
 
@@ -39,7 +39,7 @@ export function ReportSelectorNode({ id, data }: NodeProps) {
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-gray-400">{fund?.name ?? ticker}:</span>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-            fund?.reportType === 'МСФО' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
+            fund?.reportType === 'IFRS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
           }`}>
             {fund?.reportType ?? 'N/A'}
           </span>
@@ -47,13 +47,13 @@ export function ReportSelectorNode({ id, data }: NodeProps) {
 
         <div className="space-y-1.5">
           <div className="rounded bg-blue-500/10 border border-blue-500/20 px-2 py-1.5">
-            <div className="text-[9px] font-bold text-blue-400">IFRS (МСФО)</div>
+            <div className="text-[9px] font-bold text-blue-400">IFRS</div>
             <div className="text-[8px] text-gray-400 leading-relaxed">
               Consolidated group reporting. Used for overall business valuation and international comparison.
             </div>
           </div>
           <div className="rounded bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
-            <div className="text-[9px] font-bold text-amber-400">RAS (РСБУ)</div>
+            <div className="text-[9px] font-bold text-amber-400">RAS</div>
             <div className="text-[8px] text-gray-400 leading-relaxed">
               Standalone legal entity. Used for dividend basis and tax reporting.
             </div>
@@ -74,7 +74,7 @@ export function ReportSelectorNode({ id, data }: NodeProps) {
 export function CashFlowNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
 
@@ -140,7 +140,7 @@ export function CashFlowNode({ id, data }: NodeProps) {
 export function DebtAnalysisNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
 
@@ -212,7 +212,7 @@ export function DebtAnalysisNode({ id, data }: NodeProps) {
 export function SectorCompareNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
   const sector = fund?.sector ?? 'Oil & Gas';
@@ -265,7 +265,7 @@ export function SectorCompareNode({ id, data }: NodeProps) {
 export function ProfitabilityNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
 
@@ -328,7 +328,7 @@ export function PortfolioScoreNode({ id, data }: NodeProps) {
   const nodes = useFlowStore(s => s.nodes);
   const edges = useFlowStore(s => s.edges);
   const selectedPair = useFlowStore(s => s.selectedPair);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const ticker = useSelectedTicker(nodes);
   const fund = STOCKS_FUNDAMENTAL[ticker];
 

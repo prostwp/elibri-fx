@@ -31,18 +31,19 @@ function normalizeScan(raw: unknown[]): CryptoScanResult[] {
 
 export function CryptoScannerNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const scanMode = (data.scanMode as string[]) || ['volume_spike', 'rsi_dip'];
   const thresholds = (data.thresholds as Record<string, number>) ?? {};
 
   const scanResults = useCryptoStore(s => s.scanResults);
   const setScanResults = useCryptoStore(s => s.setScanResults);
-  const [fetching, setFetching] = useState(false);
+  // Start in "fetching" state when there are no cached results — this avoids
+  // a synchronous setFetching(true) inside useEffect (react-hooks/set-state-in-effect).
+  const [fetching, setFetching] = useState(() => scanResults.length === 0);
 
   useEffect(() => {
     if (scanResults.length > 0) return;
     let cancelled = false;
-    setFetching(true);
     scanCryptoFromBackend()
       .then(res => {
         if (cancelled) return;

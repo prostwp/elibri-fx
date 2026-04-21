@@ -7,7 +7,7 @@ const INDICATORS = ['RSI', 'MACD', 'Bollinger Bands', 'EMA', 'SMA'];
 export function TechnicalIndicatorNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const selected = (data.indicators as string[]) || ['RSI', 'MACD', 'Bollinger Bands'];
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const params = (data.params as Record<string, number>) ?? {};
 
   const toggle = (ind: string) => {

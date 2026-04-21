@@ -34,7 +34,7 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const selectedPair = useFlowStore(s => s.selectedPair);
   const activePair = isCryptoPair(selectedPair) ? selectedPair : 'BTCUSDT';
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const enabledCats = useMemo(
     () => (data.categories as Category[]) || ['macro', 'geopolitics', 'regulation', 'social'],
     [data.categories],
@@ -44,7 +44,15 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
   const [news, setNews] = useState<NewsAggregate | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // Tick once per minute so time-decay in filteredSentiment stays fresh.
+  // Using lazy init keeps initial render pure.
+  const [now, setNow] = useState<number>(() => Date.now());
   const setNewsAggregate = useCryptoStore(s => s.setNewsAggregate);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleCategory = (cat: Category) => {
     const next = enabledCats.includes(cat)
@@ -86,7 +94,6 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
     if (filtered.length === 0) return 0;
     let weightedSum = 0;
     let weightTotal = 0;
-    const now = Date.now();
     for (const it of filtered) {
       const pub = new Date(it.published_at).getTime();
       const hoursOld = (now - pub) / (1000 * 60 * 60);
@@ -95,7 +102,7 @@ export function CryptoFundamentalNode({ id, data }: NodeProps) {
       weightTotal += w;
     }
     return weightTotal > 0 ? weightedSum / weightTotal : 0;
-  }, [filtered]);
+  }, [filtered, now]);
 
   const verdict = filteredSentiment > 0.15 ? 'bull' : filteredSentiment < -0.15 ? 'bear' : 'neutral';
   const verdictColor = verdict === 'bull' ? 'text-emerald-400' : verdict === 'bear' ? 'text-red-400' : 'text-gray-400';

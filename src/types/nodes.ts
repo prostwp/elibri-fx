@@ -13,6 +13,7 @@ export interface NodeDefinition {
   inputs: string[];
   outputs: string[];
   defaultData: Record<string, unknown>;
+  hidden?: boolean;
 }
 
 export interface MarketPairData {
@@ -62,6 +63,29 @@ export interface RiskCapData {
 export interface GuidedTraderData {
   level: 'beginner' | 'intermediate';
   [key: string]: unknown;
+}
+
+export type RiskTier = 'conservative' | 'balanced' | 'aggressive';
+
+export interface RiskManagerData {
+  riskTier?: RiskTier;
+  maxRiskPct?: number;
+  slAtrMult?: number;
+  tpAtrMult?: number;
+  equity?: number;
+  customized?: boolean;
+  atr?: number;
+  accountBalance?: number;
+  weight?: number;
+  [key: string]: unknown;
+}
+
+export interface TradeSetup {
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;
+  riskReward: number;
+  suggestedVolume: number;
 }
 
 export type AppNode = Node;
@@ -114,7 +138,7 @@ export interface YOLOAnalysis extends AIAnalysis {
 
 // ─── Crypto Module Types ─────────────────────────
 
-export type CryptoPair = 'BTCUSDT' | 'ETHUSDT' | 'SOLUSDT' | 'BNBUSDT' | 'XRPUSDT' | 'DOGEUSDT';
+export type CryptoPair = 'BTCUSDT' | 'ETHUSDT' | 'SOLUSDT' | 'XRPUSDT' | 'BNBUSDT';
 
 export interface CryptoSourceData {
   pair: CryptoPair;
@@ -157,4 +181,31 @@ export interface MLPrediction {
   priceTarget: number;
   timeframe: string;
   features: Record<string, number>;
+}
+
+// ─── Patch 2C: Crypto ML node data ───
+export interface CryptoMLConsensus {
+  direction: 'buy' | 'sell' | 'neutral' | 'mixed';
+  alignment: number;
+  high_quality: boolean;
+  avg_confidence: number;
+  label?: 'trend_aligned' | 'mean_reversion' | 'random';
+  label_reason?: string;
+  blocked?: boolean;
+  risk_tier?: string;
+}
+
+export interface CryptoMLData {
+  weight?: number;
+  lastPredictedAt?: number;
+  direction?: 'buy' | 'sell' | 'neutral';
+  confidence?: number;
+  priceTarget?: number;
+  timeframe?: string;
+  features?: Record<string, number>;
+  vol_gate?: string;
+  risk_tier?: string;
+  consensus?: CryptoMLConsensus;
+  mtfConsensus?: CryptoMLConsensus;
+  [key: string]: unknown;
 }

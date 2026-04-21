@@ -26,7 +26,7 @@ export interface FundamentalData {
   ticker: string;
   name: string;
   sector: string;
-  reportType: 'МСФО' | 'РСБУ';
+  reportType: 'IFRS' | 'RAS';
 
   // Мультипликаторы
   pe: number;           // P/E
@@ -85,7 +85,7 @@ export interface SectorComparison {
 // ─── Фундаментальные данные (реальные из отчётности 2024) ───
 export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
   'SBER': {
-    ticker: 'SBER', name: 'Сбербанк', sector: 'Банки', reportType: 'МСФО',
+    ticker: 'SBER', name: 'Sberbank', sector: 'Banks', reportType: 'IFRS',
     pe: 3.8, pb: 0.9, ps: 1.4, evEbitda: 0, divYield: 12.0,
     roe: 24.2, roa: 3.4, netMargin: 36.8, operMargin: 42.0,
     revenue: 3890, netIncome: 1508, ebitda: 0, fcf: 850, capex: 180,
@@ -95,7 +95,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     upside: 15.3,
   },
   'GAZP': {
-    ticker: 'GAZP', name: 'Газпром', sector: 'Нефть и газ', reportType: 'МСФО',
+    ticker: 'GAZP', name: 'Gazprom', sector: 'Oil & Gas', reportType: 'IFRS',
     pe: 3.2, pb: 0.3, ps: 0.5, evEbitda: 2.8, divYield: 5.2,
     roe: 8.5, roa: 3.1, netMargin: 14.2, operMargin: 18.5,
     revenue: 8540, netIncome: 1214, ebitda: 2890, fcf: 420, capex: 2100,
@@ -105,7 +105,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     upside: 12.8,
   },
   'LKOH': {
-    ticker: 'LKOH', name: 'Лукойл', sector: 'Нефть и газ', reportType: 'МСФО',
+    ticker: 'LKOH', name: 'Lukoil', sector: 'Oil & Gas', reportType: 'IFRS',
     pe: 4.5, pb: 0.8, ps: 0.6, evEbitda: 2.5, divYield: 14.8,
     roe: 18.5, roa: 11.2, netMargin: 12.8, operMargin: 16.5,
     revenue: 8200, netIncome: 1050, ebitda: 1820, fcf: 780, capex: 520,
@@ -115,7 +115,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     upside: 13.9,
   },
   'YNDX': {
-    ticker: 'YNDX', name: 'Яндекс', sector: 'IT', reportType: 'МСФО',
+    ticker: 'YNDX', name: 'Yandex', sector: 'IT', reportType: 'IFRS',
     pe: 28.5, pb: 5.2, ps: 3.8, evEbitda: 15.2, divYield: 0,
     roe: 18.2, roa: 8.5, netMargin: 13.5, operMargin: 10.2,
     revenue: 920, netIncome: 124, ebitda: 215, fcf: 95, capex: 85,
@@ -125,7 +125,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     upside: 16.9,
   },
   'GMKN': {
-    ticker: 'GMKN', name: 'Норникель', sector: 'Металлургия', reportType: 'МСФО',
+    ticker: 'GMKN', name: 'Nornickel', sector: 'Metals & Mining', reportType: 'IFRS',
     pe: 8.2, pb: 3.5, ps: 2.1, evEbitda: 5.8, divYield: 6.5,
     roe: 42.5, roa: 15.8, netMargin: 25.5, operMargin: 38.0,
     revenue: 1180, netIncome: 301, ebitda: 520, fcf: 180, capex: 280,
@@ -135,7 +135,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     upside: 12.9,
   },
   'NLMK': {
-    ticker: 'NLMK', name: 'НЛМК', sector: 'Металлургия', reportType: 'РСБУ',
+    ticker: 'NLMK', name: 'NLMK', sector: 'Metals & Mining', reportType: 'RAS',
     pe: 5.8, pb: 1.2, ps: 0.9, evEbitda: 3.5, divYield: 10.2,
     roe: 20.5, roa: 12.8, netMargin: 15.2, operMargin: 22.0,
     revenue: 850, netIncome: 129, ebitda: 245, fcf: 120, capex: 65,
@@ -145,7 +145,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     upside: 16.0,
   },
   'ROSN': {
-    ticker: 'ROSN', name: 'Роснефть', sector: 'Нефть и газ', reportType: 'МСФО',
+    ticker: 'ROSN', name: 'Rosneft', sector: 'Oil & Gas', reportType: 'IFRS',
     pe: 3.9, pb: 0.6, ps: 0.5, evEbitda: 3.2, divYield: 8.5,
     roe: 16.8, roa: 7.2, netMargin: 12.5, operMargin: 18.8,
     revenue: 9800, netIncome: 1225, ebitda: 2850, fcf: 650, capex: 1200,
@@ -155,7 +155,7 @@ export const STOCKS_FUNDAMENTAL: Record<string, FundamentalData> = {
     upside: 15.3,
   },
   'MTSS': {
-    ticker: 'MTSS', name: 'МТС', sector: 'Телеком', reportType: 'МСФО',
+    ticker: 'MTSS', name: 'MTS', sector: 'Telecom', reportType: 'IFRS',
     pe: 8.5, pb: 0, ps: 0.8, evEbitda: 3.8, divYield: 11.5,
     roe: 0, roa: 4.2, netMargin: 9.5, operMargin: 28.0,
     revenue: 640, netIncome: 61, ebitda: 295, fcf: 45, capex: 110,
@@ -331,24 +331,24 @@ export function getStressScore(data: FundamentalData): {
   const factors: string[] = [];
 
   // FCF positive
-  if (data.fcf > 0) { score += 15; factors.push('FCF положительный'); }
-  else { score -= 20; factors.push('FCF отрицательный — риск'); }
+  if (data.fcf > 0) { score += 15; factors.push('FCF positive'); }
+  else { score -= 20; factors.push('FCF negative — risk'); }
 
   // Net Debt / EBITDA
-  if (data.netDebtEbitda < 1) { score += 15; factors.push('Низкая долговая нагрузка'); }
-  else if (data.netDebtEbitda < 2) { score += 5; factors.push('Умеренный долг'); }
-  else { score -= 15; factors.push('Высокий долг — стресс-риск'); }
+  if (data.netDebtEbitda < 1) { score += 15; factors.push('Low debt load'); }
+  else if (data.netDebtEbitda < 2) { score += 5; factors.push('Moderate debt'); }
+  else { score -= 15; factors.push('High debt — stress risk'); }
 
   // Current Ratio
-  if (data.currentRatio > 1.5) { score += 10; factors.push('Хорошая ликвидность'); }
-  else if (data.currentRatio < 1) { score -= 10; factors.push('Низкая ликвидность'); }
+  if (data.currentRatio > 1.5) { score += 10; factors.push('Strong liquidity'); }
+  else if (data.currentRatio < 1) { score -= 10; factors.push('Weak liquidity'); }
 
   // Revenue growth
-  if (data.revenueGrowth > 10) { score += 10; factors.push('Сильный рост выручки'); }
-  else if (data.revenueGrowth < 0) { score -= 10; factors.push('Выручка падает'); }
+  if (data.revenueGrowth > 10) { score += 10; factors.push('Strong revenue growth'); }
+  else if (data.revenueGrowth < 0) { score -= 10; factors.push('Revenue declining'); }
 
   // Dividends
-  if (data.divYield > 8) { score += 5; factors.push('Высокие дивиденды'); }
+  if (data.divYield > 8) { score += 5; factors.push('High dividend yield'); }
 
   score = Math.max(0, Math.min(100, score));
   const level = score >= 70 ? 'strong' : score >= 40 ? 'moderate' : 'weak';

@@ -44,7 +44,7 @@ export function NodeSidebar() {
       {/* Nodes */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
         {categories.map(cat => {
-          const defs = NODE_DEFINITIONS.filter(d => d.category === cat);
+          const defs = NODE_DEFINITIONS.filter(d => d.category === cat && !d.hidden);
           const { label, color } = CATEGORY_LABELS[cat];
           return (
             <div key={cat}>

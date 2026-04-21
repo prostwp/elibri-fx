@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BaseNode } from './BaseNode';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { STOCKS_FUNDAMENTAL } from '../../lib/stockData';
@@ -26,19 +26,31 @@ const DIVIDEND_DATA: Record<string, {
 export function DividendNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const nodes = useFlowStore(s => s.nodes);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   const ticker = useMemo(() => {
     const sn = nodes.find(n => n.type === 'stockAnalysis');
     return (sn?.data?.ticker as string) ?? 'SBER';
   }, [nodes]);
 
+  // Tick once per hour so the days-to-ex-date countdown stays fresh
+  // (day-granularity makes finer intervals unnecessary). Lazy init keeps first render pure.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 3_600_000);
+    return () => clearInterval(interval);
+  }, []);
+
   const div = DIVIDEND_DATA[ticker];
   const fund = STOCKS_FUNDAMENTAL[ticker];
+  const daysToEx = useMemo(() => {
+    if (!div || div.exDate === '-') return null;
+    return Math.max(0, Math.round((new Date(div.exDate).getTime() - now) / 86400000));
+  }, [div, now]);
+
   if (!div || !fund) return null;
 
   const divYield = fund.divYield;
-  const daysToEx = div.exDate !== '-' ? Math.max(0, Math.round((new Date(div.exDate).getTime() - Date.now()) / 86400000)) : null;
 
   return (
     <BaseNode icon="💎" label="Dividend Capture" category="analysis"

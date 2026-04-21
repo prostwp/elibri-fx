@@ -11,7 +11,7 @@ import type { NodeProps } from '@xyflow/react';
 
 export function TradingAnalystNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   return (
     <BaseNode

@@ -9,7 +9,7 @@ import type { NodeProps } from '@xyflow/react';
 
 export function StockAnalysisNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const selectedTicker = (data.ticker as string) ?? 'SBER';
   const [quote, setQuote] = useState<StockQuote | null>(null);
 
@@ -59,7 +59,7 @@ export function StockAnalysisNode({ id, data }: NodeProps) {
         {/* Report type badge */}
         <div className="flex items-center gap-1.5">
           <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
-            fund.reportType === 'МСФО' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
+            fund.reportType === 'IFRS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
           }`}>
             {fund.reportType}
           </span>

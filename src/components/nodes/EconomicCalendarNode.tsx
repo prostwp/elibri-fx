@@ -15,7 +15,7 @@ function formatCountdown(minutes: number): string {
 
 export function EconomicCalendarNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
 
   const [events, setEvents] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);

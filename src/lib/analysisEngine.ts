@@ -9,7 +9,6 @@ import type {
   OHLCVCandle, IndicatorResult,
 } from '../types/nodes';
 import { evaluateGraph, type GraphResult } from './graphEngine';
-import { calcATR, findSupportResistance, calcBollingerBands } from './indicators';
 
 // ─── Verdict from graph score ───────────────────
 function scoreToVerdict(score: number): string {
@@ -80,90 +79,20 @@ function calcRiskLevel(graph: GraphResult, nodes: Node[]): {
   return { riskLevel, riskMismatch: mismatch };
 }
 
-// ─── Entry/SL/TP with weight-adjusted aggressiveness ──
-function calcWeightedTradeSetup(
-  candles: OHLCVCandle[],
+// ─── Entry/SL/TP sourced from graphEngine.buildTradeSetup ──
+// Single source of truth: graph.tradeSetup (tier-aware, shared Turtle-rule sizing).
+// When no Risk Manager is present, tradeSetup is undefined and we return zeros —
+// mirroring legacy behaviour so downstream `.toFixed()` calls stay safe.
+function getTradeSetupFromGraph(
   graph: GraphResult,
-  nodes: Node[],
 ): { entry: number; stopLoss: number; takeProfit: number; riskReward: number } {
-  const lastPrice = candles[candles.length - 1]?.close ?? 0;
-  if (lastPrice === 0 || candles.length < 20) {
-    return { entry: 0, stopLoss: 0, takeProfit: 0, riskReward: 0 };
-  }
-
-  const atr = calcATR(candles);
-  const { support, resistance } = findSupportResistance(candles);
-  const isLong = graph.finalScore > 0;
-
-  const entry = lastPrice;
-
-  // Aggressiveness from risk node weights (higher weight = more conservative)
-  const riskNodes = nodes.filter(n => n.type === 'riskManager' || n.type === 'riskCap');
-  const avgRiskWeight = riskNodes.length > 0
-    ? riskNodes.reduce((s, n) => s + ((n.data.weight as number) ?? 0.5), 0) / riskNodes.length
-    : 0.5;
-
-  // Conservative multiplier: high risk weight → wider SL, tighter TP
-  // Aggressive multiplier: low risk weight → tighter SL, wider TP
-  const slMultiplier = 1.0 + avgRiskWeight; // 1.0 - 2.0
-  const tpMultiplier = 3.0 - avgRiskWeight; // 2.0 - 3.0
-
-  let stopLoss: number;
-  let takeProfit: number;
-
-  if (isLong) {
-    const slFromATR = entry - atr * slMultiplier;
-    const slFromSupport = support - atr * 0.2;
-    stopLoss = Math.max(slFromATR, slFromSupport);
-
-    const tpFromATR = entry + atr * tpMultiplier;
-    const tpFromResistance = resistance + atr * 0.1;
-    takeProfit = Math.min(tpFromATR, tpFromResistance);
-
-    // BB refinement if technical indicators node exists
-    const hasBB = nodes.some(n =>
-      (n.type === 'technicalIndicator' || n.type === 'cryptoTechnical') &&
-      ((n.data.indicators as string[]) ?? []).includes('Bollinger Bands')
-    );
-    if (hasBB) {
-      const bb = calcBollingerBands(candles);
-      if (lastPrice < bb.middle) {
-        takeProfit = Math.max(takeProfit, bb.upper);
-      }
-    }
-  } else {
-    const slFromATR = entry + atr * slMultiplier;
-    const slFromResistance = resistance + atr * 0.2;
-    stopLoss = Math.min(slFromATR, slFromResistance);
-
-    const tpFromATR = entry - atr * tpMultiplier;
-    const tpFromSupport = support - atr * 0.1;
-    takeProfit = Math.max(tpFromATR, tpFromSupport);
-
-    const hasBB = nodes.some(n =>
-      (n.type === 'technicalIndicator' || n.type === 'cryptoTechnical') &&
-      ((n.data.indicators as string[]) ?? []).includes('Bollinger Bands')
-    );
-    if (hasBB) {
-      const bb = calcBollingerBands(candles);
-      if (lastPrice > bb.middle) {
-        takeProfit = Math.min(takeProfit, bb.lower);
-      }
-    }
-  }
-
-  const risk = Math.abs(entry - stopLoss);
-  const reward = Math.abs(takeProfit - entry);
-  const riskReward = risk > 0 ? Math.round((reward / risk) * 10) / 10 : 0;
-
-  const decimals = lastPrice > 100 ? 2 : 5;
-  const factor = Math.pow(10, decimals);
-
+  const ts = graph.tradeSetup;
+  if (!ts) return { entry: 0, stopLoss: 0, takeProfit: 0, riskReward: 0 };
   return {
-    entry: Math.round(entry * factor) / factor,
-    stopLoss: Math.round(stopLoss * factor) / factor,
-    takeProfit: Math.round(takeProfit * factor) / factor,
-    riskReward,
+    entry: ts.entry,
+    stopLoss: ts.stopLoss,
+    takeProfit: ts.takeProfit,
+    riskReward: Math.round(ts.riskRewardRatio * 10) / 10,
   };
 }
 
@@ -281,7 +210,7 @@ export function analyzeStrategy(
   const verdict = scoreToVerdict(graph.finalScore);
   const confidence = calcConfidence(graph);
   const { riskLevel, riskMismatch } = calcRiskLevel(graph, nodes);
-  const setup = calcWeightedTradeSetup(candles, graph, nodes);
+  const setup = getTradeSetupFromGraph(graph);
   const indicators = collectIndicators(graph);
   const signals = buildSignalRows(graph);
 

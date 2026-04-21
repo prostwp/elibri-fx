@@ -4,7 +4,7 @@
  */
 
 import type { Node, Edge } from '@xyflow/react';
-import type { OHLCVCandle, IndicatorResult } from '../types/nodes';
+import type { OHLCVCandle, IndicatorResult, RiskTier } from '../types/nodes';
 import {
   calcRSI, calcMACD, calcBollingerBands,
   calcEMAIndicator, calcSMA,
@@ -13,6 +13,55 @@ import { detectPatterns } from './chartPatterns';
 import { STOCKS_FUNDAMENTAL, getStressScore, getSectorComparison } from './stockData';
 import { calcVolumeSpike, calcPriceDip, getCryptoIndicatorSignals } from './cryptoIndicators';
 import { useCryptoStore } from '../stores/useCryptoStore';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Risk-tier config — mirrors backend elibri-backend/internal/ml/risk_tiers.go.
+// Kept identical so frontend pre-filters behave the same way the Go server
+// does in the vol-gate / label-gate checks.
+//
+// Patch 2E: removed minConfidence from the tier config and dropped the
+// 'low_conf' block reason. HC threshold from best_thresholds.json is the
+// single confidence filter — the tier knob was double-gating the same
+// signal and producing 0 trades on Conservative/Balanced.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type RiskTierKey = 'conservative' | 'balanced' | 'aggressive';
+
+export type BlockReason = 'low_vol' | 'mtf' | 'label' | undefined;
+
+export const TIER_CONFIG: Record<RiskTierKey, {
+  minVolPctByTF: Record<string, number>;
+  maxTradesPerDay: number;
+  allowedLabels: Array<'trend_aligned' | 'mean_reversion' | 'random'>;
+  riskPerTradePct: number;     // fraction, e.g. 0.005 = 0.5%
+  slAtrMult: number;
+  tpAtrMult: number;
+}> = {
+  conservative: {
+    minVolPctByTF: { '5m': 0.008, '15m': 0.010, '1h': 0.015, '4h': 0.020, '1d': 0.025 },
+    maxTradesPerDay: 3,
+    allowedLabels: ['trend_aligned'],
+    riskPerTradePct: 0.0025,
+    slAtrMult: 1.5,
+    tpAtrMult: 2.5,
+  },
+  balanced: {
+    minVolPctByTF: { '5m': 0.005, '15m': 0.007, '1h': 0.010, '4h': 0.015, '1d': 0.020 },
+    maxTradesPerDay: 7,
+    allowedLabels: ['trend_aligned', 'mean_reversion'],
+    riskPerTradePct: 0.005,
+    slAtrMult: 1.5,
+    tpAtrMult: 2.5,
+  },
+  aggressive: {
+    minVolPctByTF: { '5m': 0.0025, '15m': 0.004, '1h': 0.006, '4h': 0.010, '1d': 0.015 },
+    maxTradesPerDay: 20,
+    allowedLabels: ['trend_aligned', 'mean_reversion'],
+    riskPerTradePct: 0.01,
+    slAtrMult: 1.2,
+    tpAtrMult: 2.0,
+  },
+};
 
 // Сигнал ноды: числовое значение -1 (sell) .. 0 (neutral) .. +1 (buy)
 export interface NodeSignal {
@@ -38,8 +87,12 @@ export interface TradeSetup {
   riskRewardRatio: number; // reward / risk
   equity: number;
   riskPct: number;        // % of equity at risk
-  hasConflict: boolean;
+  hasConflict: boolean;   // legacy flag — UI still renders from mtf mismatch
   confidence: number;     // 0..100
+  // Tier-aware decision envelope (set when backend/frontend rejects the trade).
+  // direction='hold' + blocked=<reason> means "do not trade because X".
+  blocked?: BlockReason;
+  riskTier: string;       // echoes the tier that evaluated this setup
 }
 
 export interface GraphResult {
@@ -195,7 +248,7 @@ export function evaluateGraph(
     const node = nodeMap.get(nodeId);
     if (!node) continue;
 
-    const weight = (node.data.weight as number) ?? 0.5;
+    const weight = (node.data.weight as number) ?? 1.0;
     const type = node.type ?? '';
     const incoming = getIncomingSignals(nodeId, edges, signalMap);
 
@@ -916,6 +969,21 @@ export function evaluateGraph(
 /**
  * Build TradeSetup from Risk Manager node params + candles ATR.
  * Returns undefined if no Risk Manager in graph.
+ *
+ * Tier-aware flow (mirrors backend risk_tiers.go):
+ *   1. Resolve tier from RiskManagerNode data (default 'balanced').
+ *   2. Check blocking gates in order: low_vol → mtf → label.
+ *      Any trip sets direction='hold' + blocked=<reason>. Backend owns
+ *      the real decision; this is the UI mirror so the preview doesn't
+ *      contradict the server. Patch 2E: confidence gate removed — HC
+ *      threshold on the backend is the single confidence filter.
+ *   3. Position sizing = Turtle: (equity × riskPerTradePct) / (atr × slAtrMult).
+ *      Shared formula with indicators.calcTradeSetup — do not re-invent.
+ *   4. SL/TP use tier.slAtrMult / tier.tpAtrMult, not hardcoded 1.5/2.5.
+ *
+ * NOTE: legacy `hasConflict × 0.5` shrink was removed — tier gates handle
+ * this cleanly via `blocked`. `hasConflict` is still emitted for backward
+ * compatibility with PreviewPanel/tradeSummary until those callers migrate.
  */
 function buildTradeSetup(
   nodes: Node[],
@@ -928,68 +996,104 @@ function buildTradeSetup(
   const rm = nodes.find(n => n.type === 'riskManager');
   if (!rm || candles.length < 15) return undefined;
 
-  // Params from the node (user-editable).
-  const equity = (rm.data.equity as number) ?? 10000;
-  const riskPct = (rm.data.maxRiskPct as number) ?? 1.0;
-  const slMult = (rm.data.slAtrMult as number) ?? 1.5;
-  const tpMult = (rm.data.tpAtrMult as number) ?? 2.5;
+  // ── Resolve tier ─────────────────────────────────────────────────
+  const riskTier = ((rm.data.riskTier as RiskTier) ?? 'balanced') as RiskTierKey;
+  const tier = TIER_CONFIG[riskTier] ?? TIER_CONFIG.balanced;
 
-  // Check conflict among Risk Manager incoming signals.
+  // User-editable equity (sizing base).
+  const equity = (rm.data.equity as number) ?? 10000;
+
+  // ── Gather pipeline inputs ───────────────────────────────────────
+  const atr = calcATR14(candles);
+  const entry = candles[candles.length - 1].close;
+  const atrNorm = entry > 0 ? atr / entry : 0;
+
+  // Timeframe from CryptoTechnical node; fall back to '4h' like CryptoMLNode.
+  const ct = nodes.find(n => n.type === 'cryptoTechnical');
+  const timeframe = (ct?.data?.interval as string) ?? '4h';
+
+  // CryptoML extras (set by CryptoMLNode.run after backend call).
+  const cmlNode = nodes.find(n => n.type === 'cryptoML');
+  const cmlConsensus = cmlNode?.data?.consensus as {
+    direction?: string;
+    alignment?: number;
+    high_quality?: boolean;
+    label?: 'trend_aligned' | 'mean_reversion' | 'random';
+    blocked?: boolean;
+  } | undefined;
+  const cmlVolGate = cmlNode?.data?.vol_gate as string | undefined;
+
+  // Legacy cross-signal conflict flag — still surfaced on the TradeSetup
+  // for tradeSummary.ts / PreviewPanel.tsx until they switch to `blocked`.
   const rmIncoming = edges
     .filter(e => e.target === rm.id)
     .map(e => signalMap.get(e.source))
     .filter((s): s is NodeSignal => !!s);
-  let hasConflict =
-    rmIncoming.some(s => s.signal > 0.1) && rmIncoming.some(s => s.signal < -0.1);
+  const hasConflict =
+    (rmIncoming.some(s => s.signal > 0.1) && rmIncoming.some(s => s.signal < -0.1)) ||
+    cmlConsensus?.direction === 'mixed';
 
-  // MTF gate: if CryptoML node carries mtfConsensus.direction='mixed',
-  // treat it as a conflict too — higher/lower TF disagree, no clean trade.
-  const cmlNode = nodes.find(n => n.type === 'cryptoML');
-  const mtf = cmlNode?.data?.mtfConsensus as { direction?: string; alignment?: number } | undefined;
-  if (mtf?.direction === 'mixed') {
-    hasConflict = true;
+  // ── Blocking gates (order matters: matches backend priority) ─────
+  // Patch 2E: removed the confidence gate — HC threshold (backend) is
+  // the single confidence filter. Frontend only mirrors vol / mtf /
+  // label gates now.
+  let blocked: BlockReason = undefined;
+
+  // 1. Vol gate — frontend ATR check OR backend vol_gate echo.
+  {
+    const minVol = tier.minVolPctByTF[timeframe] ?? 0;
+    if (atrNorm < minVol || cmlVolGate === 'blocked_low_vol') {
+      blocked = 'low_vol';
+    }
   }
 
-  // Compute ATR.
-  const atr = calcATR14(candles);
-  const entry = candles[candles.length - 1].close;
+  // 2. Multi-timeframe gate from CryptoML consensus.
+  if (!blocked && cmlConsensus?.blocked === true) {
+    blocked = 'mtf';
+  }
 
-  // Direction from final score.
+  // 3. Label allow-list.
+  if (!blocked && cmlConsensus?.label) {
+    const allowed = tier.allowedLabels as readonly string[];
+    if (!allowed.includes(cmlConsensus.label)) {
+      blocked = 'label';
+    }
+  }
+
+  // ── Direction ────────────────────────────────────────────────────
   let direction: 'buy' | 'sell' | 'hold' = 'hold';
-  if (finalScore > 0.1) direction = 'buy';
-  else if (finalScore < -0.1) direction = 'sell';
+  if (!blocked) {
+    if (finalScore > 0.1) direction = 'buy';
+    else if (finalScore < -0.1) direction = 'sell';
+  }
 
-  // SL/TP based on direction.
+  // ── SL/TP via tier multipliers ──────────────────────────────────
   let stopLoss = entry;
   let takeProfit = entry;
   if (direction === 'buy') {
-    stopLoss = entry - slMult * atr;
-    takeProfit = entry + tpMult * atr;
+    stopLoss = entry - tier.slAtrMult * atr;
+    takeProfit = entry + tier.tpAtrMult * atr;
   } else if (direction === 'sell') {
-    stopLoss = entry + slMult * atr;
-    takeProfit = entry - tpMult * atr;
+    stopLoss = entry + tier.slAtrMult * atr;
+    takeProfit = entry - tier.tpAtrMult * atr;
   }
 
-  // Position sizing: risk $ = equity × riskPct / 100. Size = riskDollars / SL distance.
-  const riskDollars = (equity * riskPct) / 100;
-  const slDistance = Math.abs(entry - stopLoss);
+  // ── Turtle position sizing ──────────────────────────────────────
+  // Same formula as indicators.calcTradeSetup (Turtle rule):
+  //   positionSize = (equity × riskPerTradePct) / (atr × slAtrMult)
+  // riskPerTradePct is a fraction (tier.riskPerTradePct = 0.005 = 0.5%).
+  const riskDollars = equity * tier.riskPerTradePct;
+  const atrSlDistance = atr * tier.slAtrMult;
   let positionSize = 0;
   let positionValue = 0;
   let rewardDollars = 0;
   let riskRewardRatio = 0;
 
-  if (slDistance > 0 && direction !== 'hold') {
-    positionSize = riskDollars / slDistance; // e.g. BTC count
-    positionValue = positionSize * entry;    // $ value
+  if (atrSlDistance > 0 && direction !== 'hold') {
+    positionSize = riskDollars / atrSlDistance;
+    positionValue = positionSize * entry;
     rewardDollars = positionSize * Math.abs(takeProfit - entry);
-    riskRewardRatio = rewardDollars / riskDollars;
-  }
-
-  // If conflict, shrink size by 50% (mirrors old RiskManager dampening).
-  if (hasConflict && direction !== 'hold') {
-    positionSize *= 0.5;
-    positionValue *= 0.5;
-    rewardDollars *= 0.5;
+    riskRewardRatio = riskDollars > 0 ? rewardDollars / riskDollars : 0;
   }
 
   return {
@@ -1004,9 +1108,11 @@ function buildTradeSetup(
     rewardDollars,
     riskRewardRatio,
     equity,
-    riskPct,
+    riskPct: tier.riskPerTradePct * 100, // percent form for UI
     hasConflict,
     confidence,
+    blocked,
+    riskTier,
   };
 }
 

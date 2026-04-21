@@ -68,7 +68,7 @@ function calcDaySignal(
   let activeNodes = 0;
 
   for (const node of nodes) {
-    const weight = (node.data.weight as number) ?? 0.5;
+    const weight = (node.data.weight as number) ?? 1.0;
     if (weight < 0.05) continue;
 
     let signal = 0;

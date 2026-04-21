@@ -6,7 +6,7 @@ import type { NodeProps } from '@xyflow/react';
 export function MarketPairNode({ id, data }: NodeProps) {
   const updateNodeData = useFlowStore(s => s.updateNodeData);
   const setSelectedPair = useFlowStore(s => s.setSelectedPair);
-  const weight = (data.weight as number) ?? 0.5;
+  const weight = (data.weight as number) ?? 1.0;
   const pair = (data.pair as string) || 'EURUSD';
 
   return (
