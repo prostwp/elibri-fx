@@ -241,17 +241,39 @@ export function CryptoMLNode({ id, data }: NodeProps) {
                   <span className="text-gray-600">—</span>
                 </div>
               );
-              const tone = p.direction === 'buy' ? 'text-emerald-400'
-                : p.direction === 'sell' ? 'text-red-400' : 'text-gray-400';
-              const icon = p.direction === 'buy' ? '▲' : p.direction === 'sell' ? '▼' : '—';
+              // Reveal the ACTUAL directional bias even when HC gate keeps
+              // direction="neutral". probability is P(up): >0.55 → bias_up,
+              // <0.45 → bias_down, else true neutral.
+              const probUp = p.probability ?? 0.5;
+              const probAway = Math.max(probUp, 1 - probUp);   // how far from 50/50
+              const biasDir: 'buy' | 'sell' | 'neutral' =
+                p.direction !== 'neutral' ? p.direction
+                : probUp >= 0.55 ? 'buy'
+                : probUp <= 0.45 ? 'sell'
+                : 'neutral';
+              const isHCSignal = p.direction !== 'neutral';          // model passed HC
+              const isBiasOnly = !isHCSignal && biasDir !== 'neutral'; // sub-HC bias
+              // Color: HC signal = saturated, bias = dimmed variant, true neutral = gray.
+              const tone =
+                isHCSignal && biasDir === 'buy'  ? 'text-emerald-400 font-semibold'
+              : isHCSignal && biasDir === 'sell' ? 'text-red-400 font-semibold'
+              : isBiasOnly && biasDir === 'buy'  ? 'text-emerald-400/60'
+              : isBiasOnly && biasDir === 'sell' ? 'text-red-400/60'
+              : 'text-gray-500';
+              const icon = biasDir === 'buy' ? '▲' : biasDir === 'sell' ? '▼' : '—';
+              const label = isHCSignal ? biasDir : (isBiasOnly ? `${biasDir} bias` : 'neutral');
+              // Confidence: when HC gate didn't fire, show the real distance
+              // from 50/50 so the user can see the model's leaning.
+              const displayPct = Math.round((isHCSignal ? (p.confidence / 100) : probAway) * 100);
               return (
-                <div key={iv} className="flex items-center justify-between text-[9px]">
+                <div key={iv} className="flex items-center justify-between text-[9px]"
+                     title={`proba_up=${probUp.toFixed(3)} · HC=${p.metrics.high_confidence ? 'yes' : 'no'}`}>
                   <span className="text-gray-500 font-mono">{iv}</span>
                   <span className="flex items-center gap-1">
-                    <span className={tone}>{icon} {p.direction}</span>
-                    <span className="text-gray-500">{Math.round(p.confidence)}%</span>
+                    <span className={tone}>{icon} {label}</span>
+                    <span className="text-gray-500">{displayPct}%</span>
                     {p.metrics.high_confidence && (
-                      <span className="text-emerald-400" title="High-confidence">⚡</span>
+                      <span className="text-emerald-400" title="High-confidence (pass threshold)">⚡</span>
                     )}
                   </span>
                 </div>

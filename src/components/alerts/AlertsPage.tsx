@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell, BellOff, ArrowLeft, RefreshCw, ArrowUpRight, ArrowDownRight,
-  Check, Loader2, Filter,
+  Check, Loader2, Filter, Activity, Radio, Clock,
 } from 'lucide-react';
 import { listAlerts, type Alert } from '../../lib/scenarios';
 import { fetchStrategies, type Strategy } from '../../lib/strategies';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useScenariosStore } from '../../stores/useScenariosStore';
 
 type DirFilter = 'all' | 'buy' | 'sell';
 type RangeFilter = '24h' | '7d' | '30d';
@@ -23,6 +24,8 @@ const POLL_MS = 60_000;
 export function AlertsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const activeScenarios = useScenariosStore((s) => s.activeScenarios);
+  const scenariosLoading = useScenariosStore((s) => s.loading);
 
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
@@ -177,6 +180,78 @@ export function AlertsPage() {
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
+        </div>
+
+        {/* Active scenarios — what's running right now */}
+        <div className="mb-4 rounded-xl border border-slate-800 bg-[#0d0d14] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <Radio className="h-4 w-4 text-emerald-400" />
+              Active Scenarios
+              <span className="text-xs font-normal text-slate-500">
+                {scenariosLoading ? 'loading…' : `${activeScenarios.length} running`}
+              </span>
+            </h2>
+            <button
+              onClick={() => navigate('/app')}
+              className="text-[11px] text-slate-500 hover:text-slate-300 transition"
+            >
+              Open Strategy Builder →
+            </button>
+          </div>
+          {activeScenarios.length === 0 ? (
+            <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-3 text-xs text-slate-500">
+              No paper scenarios running.{' '}
+              <button onClick={() => navigate('/app')} className="underline hover:text-slate-300">
+                Go to Strategies
+              </button>{' '}
+              and click ▶ on a strategy to activate paper trading.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {activeScenarios.map((s) => {
+                const lastSigStr = s.last_signal_bar_time > 0
+                  ? new Date(s.last_signal_bar_time * 1000).toLocaleString()
+                  : 'No signal yet';
+                const tierColor =
+                  s.risk_tier === 'conservative' ? 'text-sky-300 bg-sky-500/10 border-sky-500/20'
+                  : s.risk_tier === 'aggressive' ? 'text-rose-300 bg-rose-500/10 border-rose-500/20'
+                  : 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+                return (
+                  <div key={s.id} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                      </span>
+                      <span className="truncate text-xs font-semibold text-white">{s.name}</span>
+                      <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-300">
+                        <Activity className="h-3 w-3" />
+                        {s.running ? 'Running' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className="rounded-full border border-slate-700 bg-slate-800/50 px-2 py-0.5 font-mono text-slate-300">
+                        {s.symbol}
+                      </span>
+                      <span className="rounded-full border border-slate-700 bg-slate-800/50 px-2 py-0.5 font-mono text-slate-300">
+                        {s.interval}
+                      </span>
+                      <span className={`rounded-full border px-2 py-0.5 font-semibold capitalize ${tierColor}`}>
+                        {s.risk_tier}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500" title={lastSigStr}>
+                      <Clock className="h-3 w-3" />
+                      Last signal: {s.last_signal_bar_time > 0
+                        ? `${s.last_signal_direction?.toUpperCase() || ''} · ${lastSigStr}`
+                        : 'waiting for first HC match'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Filters */}
