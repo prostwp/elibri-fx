@@ -26,10 +26,12 @@ export interface AuthResult {
 }
 
 export function getToken(): string | null {
+  if (typeof localStorage?.getItem !== 'function') return null;
   return localStorage.getItem(TOKEN_KEY);
 }
 
 export function setToken(token: string | null) {
+  if (typeof localStorage?.setItem !== 'function') return;
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else localStorage.removeItem(TOKEN_KEY);
 }

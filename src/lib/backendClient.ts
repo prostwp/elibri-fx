@@ -5,7 +5,12 @@
 
 import { useAuthStore } from '../stores/useAuthStore';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
+// Patch 2N+1 (H1 fundamental recon): fallback to localhost matches scenarios.ts,
+// macrocal.ts, authClient.ts, strategies.ts. Without it, CryptoFundamental and
+// every other call routed through backendClient silently returned null when
+// .env lacked VITE_BACKEND_URL — which is why fundamental news looked "broken"
+// in the 2026-04-22 recon (memory/session_2026-04-22_fundamental_news_recon).
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8080';
 
 async function backendFetch<T>(path: string, options?: RequestInit): Promise<T | null> {
   if (!BACKEND_URL) return null;

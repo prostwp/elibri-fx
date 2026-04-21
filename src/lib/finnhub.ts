@@ -45,8 +45,10 @@ export interface CalendarItem {
   minutesUntil: number;
 }
 
-// Simple keyword-based sentiment
-function analyzeSentiment(text: string): 'bullish' | 'bearish' | 'neutral' {
+// Simple keyword-based sentiment. Exported for Patch 2N unit tests and for
+// future reuse inside graphEngine (forex newsFeed evaluation — see memory
+// session_2026-04-22_fundamental_news_recon hypothesis H3).
+export function analyzeSentiment(text: string): 'bullish' | 'bearish' | 'neutral' {
   const lower = text.toLowerCase();
   const bullish = ['rally', 'surge', 'gain', 'rise', 'bull', 'up', 'high', 'growth', 'strong', 'beat', 'exceed', 'positive', 'recovery', 'optimism'];
   const bearish = ['drop', 'fall', 'crash', 'decline', 'bear', 'down', 'low', 'weak', 'miss', 'cut', 'negative', 'fear', 'recession', 'loss'];
