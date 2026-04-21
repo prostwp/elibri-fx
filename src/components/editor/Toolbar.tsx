@@ -5,12 +5,14 @@ import { useMT5Store } from '../../stores/useMT5Store';
 import { useCryptoStore } from '../../stores/useCryptoStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useScenariosStore } from '../../stores/useScenariosStore';
+import { useMacroStore } from '../../stores/useMacroStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useReactFlow } from '@xyflow/react';
 import { TEMPLATES, TEMPLATE_CATEGORIES, type TemplateCategory } from '../../lib/templates';
 import { StrategyListModal } from '../strategies/StrategyListModal';
 import { toast } from '../ui/Toast';
-import { Radio, Bell } from 'lucide-react';
+import { Radio, Bell, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { nearestEvent } from '../../lib/macrocal';
 
 export function Toolbar() {
   const {
@@ -23,6 +25,10 @@ export function Toolbar() {
   const { profile, user } = useAuthStore();
   const activeScenarios = useScenariosStore((s) => s.activeScenarios);
   const activeCount = activeScenarios.length;
+  const macroEvents = useMacroStore((s) => s.events);
+  const macroBlackoutActive = useMacroStore((s) => s.blackoutActive);
+  const macroData = useMacroStore((s) => s.data);
+  const nearest = nearestEvent(macroEvents);
   const { signOut } = useAuth();
   const { fitView } = useReactFlow();
   const navigate = useNavigate();
@@ -133,6 +139,32 @@ export function Toolbar() {
           <Bell className="h-3 w-3" />
           Alerts
         </a>
+
+        {/* Macro blackout chip — red when inside window, amber if upcoming <4h */}
+        {macroBlackoutActive && macroData && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-md bg-red-500/15 border border-red-500/40 h-9"
+            title={`Scenario runner is blocking signals around ${macroData.blackout_event}`}
+          >
+            <ShieldAlert className="h-3 w-3 text-red-400" />
+            <span className="text-[10px] font-semibold text-red-300 whitespace-nowrap">
+              Macro blackout · {macroData.blackout_event.slice(0, 18)}
+            </span>
+          </div>
+        )}
+        {!macroBlackoutActive && nearest && Math.abs(nearest.minutesFromNow) < 240 && nearest.minutesFromNow > 0 && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-md bg-amber-500/10 border border-amber-500/30 h-9"
+            title={`Upcoming: ${nearest.event.event} (${nearest.event.impact} impact)`}
+          >
+            <AlertTriangle className="h-3 w-3 text-amber-400" />
+            <span className="text-[10px] font-semibold text-amber-300 whitespace-nowrap">
+              {nearest.event.event.slice(0, 16)} in {nearest.minutesFromNow < 60
+                ? `${nearest.minutesFromNow}m`
+                : `${Math.round(nearest.minutesFromNow / 60)}h`}
+            </span>
+          </div>
+        )}
 
         <div className="w-px h-5 bg-white/10 mx-1" />
 

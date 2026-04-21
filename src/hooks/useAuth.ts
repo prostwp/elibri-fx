@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import * as authClient from '../lib/authClient';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useScenariosStore } from '../stores/useScenariosStore';
+import { useMacroStore } from '../stores/useMacroStore';
 import { useFlowStore } from '../stores/useFlowStore';
 import { disconnectMT5 } from '../lib/mt5';
 import { disconnectBinance } from '../lib/binance';
@@ -60,6 +61,7 @@ export function useAuth() {
       // MT5/Binance WebSockets. Reviewer flagged this as a demo-killer
       // ("investor A signs in after B and sees B's canvas").
       useScenariosStore.getState().reset();
+      useMacroStore.getState().reset();
       // Flow store: zero canvas nodes/edges + clear the "current strategy"
       // pointer so autosave doesn't race to upload the prev user's work.
       useFlowStore.getState().clear();

@@ -10,6 +10,7 @@ import { ToastContainer, toast } from '../ui/Toast';
 import { Onboarding } from '../ui/Onboarding';
 import { useFlowStore } from '../../stores/useFlowStore';
 import { useScenariosStore } from '../../stores/useScenariosStore';
+import { useMacroStore } from '../../stores/useMacroStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 export function AppLayout() {
@@ -17,6 +18,8 @@ export function AppLayout() {
   const user = useAuthStore((s) => s.user);
   const startPolling = useScenariosStore((s) => s.startPolling);
   const stopPolling = useScenariosStore((s) => s.stopPolling);
+  const startMacroPolling = useMacroStore((s) => s.startPolling);
+  const stopMacroPolling = useMacroStore((s) => s.stopPolling);
 
   // Keep active-scenarios cache fresh while the user is in the app.
   // 30s poll — cheap enough to give near-realtime "Running" indicators.
@@ -25,6 +28,15 @@ export function AppLayout() {
     startPolling(30_000);
     return () => stopPolling();
   }, [user, startPolling, stopPolling]);
+
+  // Macro calendar — 5min poll. Used by the Toolbar chip and (optionally)
+  // EconomicCalendarNode. Backend caches 1h from Finnhub so 5min client
+  // poll is cheap.
+  useEffect(() => {
+    if (!user) return;
+    startMacroPolling(300_000);
+    return () => stopMacroPolling();
+  }, [user, startMacroPolling, stopMacroPolling]);
 
   // Keyboard shortcuts
   useEffect(() => {
